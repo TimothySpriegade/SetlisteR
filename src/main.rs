@@ -1,5 +1,5 @@
 use clap::{Parser, ValueEnum};
-use crate::validator::artist_validator::ArtistValidator;
+use crate::validator::arg_validator::ArgValidator;
 
 mod validator;
 
@@ -27,10 +27,10 @@ enum StreamingService {
 fn main() {
     let args = Args::parse();
 
-    let _artists = match ArtistValidator::validate(&args) {
-        Ok(artists) => artists,
+    let _sanitized_args = match ArgValidator::validate(&args) {
+        Ok(validated_args) => validated_args,
         Err(err) => {
-            eprintln!("Error validating artists: {}", err);
+            eprintln!("Error validating arguments: {}", err);
             std::process::exit(1);
         }
     };

@@ -8,6 +8,7 @@ impl ArtistValidator {
 
     pub fn validate(args: &Args) -> Result<Vec<String>, String> {
         let artists = Self::separate_artists(&args.artists);
+
         if artists.is_empty() {
             return Err("No artists provided. Please provide at least one artist.".to_string());
         }
@@ -17,13 +18,22 @@ impl ArtistValidator {
             .map(|artist| Self::normalize_whitespace(artist))
             .collect();
 
-        let unique_artists = Self::remove_duplicates(normalized_artists);
+        let stripped_artists: Vec<String> = normalized_artists
+            .iter()
+            .map(|artist| Self::strip_non_unicode(artist))
+            .collect();
+
+        let unique_artists = Self::remove_duplicates(stripped_artists);
 
         let filtered_artists = Self::filter_empty_artists(unique_artists);
 
         let valid_artists = Self::validate_amount_of_artists(filtered_artists)?;
 
         let artists = Self::validate_artist_names(valid_artists)?;
+
+        if artists.is_empty() {
+            return Err("No valid artists provided after processing. Please provide at least one valid artist.".to_string());
+        }
 
         Ok(artists)
     }
@@ -81,5 +91,9 @@ impl ArtistValidator {
             .into_iter()
             .filter(|artist| !artist.is_empty())
             .collect()
+    }
+
+    fn strip_non_unicode(name: &str) -> String {
+        name.chars().filter(|c| c.is_ascii()).collect()
     }
 }

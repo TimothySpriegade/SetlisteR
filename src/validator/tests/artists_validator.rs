@@ -137,5 +137,170 @@ mod tests {
         assert_eq!(artists[2], "Artist 3");
     }
 
+    #[test]
+    fn test_validate_artist_name_with_non_unicode_characters() {
+        // Arrange
+        let args = Args {
+            artists: "Artist 1, Artïst 2, Artïst 3".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 3);
+        assert_eq!(artists[0], "Artist 1");
+        assert_eq!(artists[1], "Artst 2");
+        assert_eq!(artists[2], "Artst 3");
+    }
+
+    #[test]
+    fn test_validate_single_artist() {
+        // Arrange
+        let args = Args {
+            artists: "Artist 1".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 1);
+        assert_eq!(artists[0], "Artist 1");
+    }
+
+    #[test]
+    fn test_validate_exactly_ten_artists() {
+        // Arrange
+        let args = Args {
+            artists: "Artist 1, Artist 2, Artist 3, Artist 4, Artist 5, Artist 6, Artist 7, Artist 8, Artist 9, Artist 10".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 10);
+    }
+
+    #[test]
+    fn test_validate_artist_name_exactly_100_characters() {
+        // Arrange
+        let artist_name = "A".repeat(100);
+        let args = Args {
+            artists: artist_name.clone(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 1);
+        assert_eq!(artists[0], artist_name);
+    }
+
+    #[test]
+    fn test_validate_case_sensitive_duplicates_not_removed() {
+        // Arrange
+        let args = Args {
+            artists: "artist 1, Artist 1".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 2);
+    }
+
+    #[test]
+    fn test_validate_artist_entirely_non_ascii_becomes_empty() {
+        // Arrange
+        let args = Args {
+            artists: "Artist 1, ïïï, Artist 3".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 2);
+        assert_eq!(artists[0], "Artist 1");
+        assert_eq!(artists[1], "Artist 3");
+    }
+
+    #[test]
+    fn test_validate_non_ascii_stripping_creates_duplicates() {
+        // Arrange
+        // Both "Artïst" and "Artüst" become "Artst" after stripping non-ASCII
+        let args = Args {
+            artists: "Artïst, Artüst".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 1);
+        assert_eq!(artists[0], "Artst");
+    }
+
+    #[test]
+    fn test_validate_whitespace_only_artist_is_filtered() {
+        // Arrange
+        let args = Args {
+            artists: "Artist 1,    , Artist 2".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        let artists = result.unwrap();
+        assert_eq!(artists.len(), 2);
+        assert_eq!(artists[0], "Artist 1");
+        assert_eq!(artists[1], "Artist 2");
+    }
+
+    #[test]
+    fn test_validate_only_non_ascii_artists_returns_error() {
+        // Arrange
+        let args = Args {
+            artists: "ïïï, üüü".to_string(),
+            playlist_name: None,
+            service: crate::StreamingService::Spotify,
+        };
+
+        // Act
+        let result = ArtistValidator::validate(&args);
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), "No valid artists provided after processing. Please provide at least one valid artist.".to_string());
+    }
+    
 }
 
