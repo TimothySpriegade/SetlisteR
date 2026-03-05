@@ -18,6 +18,7 @@ struct Args {
     #[arg(short, long, value_enum)]
     service: StreamingService,
 
+    // how many pages of setlist data to fetch from the setlist.fm API
     #[arg(short, long, default_value_t = 1)]
     page_depth: u16,
 }
