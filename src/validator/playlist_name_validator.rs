@@ -23,14 +23,24 @@ impl PlaylistNameValidator {
         let playlist_name = if artists.len() == 1 {
             format!("{} Setlist", artists[0])
         } else {
-            format!("{} and {} Setlist", artists[..artists.len() - 1].join(", "), artists.last().unwrap())
+            format!(
+                "{} and {} Setlist",
+                artists[..artists.len() - 1].join(", "),
+                artists.last().unwrap()
+            )
         };
 
         match Self::validate_length(&playlist_name) {
             Ok(_) => playlist_name,
             Err(_) => {
-                print!("Generated playlist name is too long. Truncating to {} characters.", Self::MAX_PLAYLIST_NAME_LENGTH);
-                playlist_name.chars().take(Self::MAX_PLAYLIST_NAME_LENGTH).collect()
+                print!(
+                    "Generated playlist name is too long. Truncating to {} characters.",
+                    Self::MAX_PLAYLIST_NAME_LENGTH
+                );
+                playlist_name
+                    .chars()
+                    .take(Self::MAX_PLAYLIST_NAME_LENGTH)
+                    .collect()
             }
         }
     }

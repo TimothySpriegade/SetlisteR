@@ -1,5 +1,5 @@
-use crate::validator::artist_validator::ArtistValidator;
 use crate::Args;
+use crate::validator::artist_validator::ArtistValidator;
 
 #[cfg(test)]
 mod tests {
@@ -39,7 +39,10 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "No artists provided. Please provide at least one artist.".to_string());
+        assert_eq!(
+            result.err().unwrap(),
+            "No artists provided. Please provide at least one artist.".to_string()
+        );
     }
 
     #[test]
@@ -74,7 +77,13 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), format!("The following artist names are too long (greater than 100 characters): {}", long_artist_name));
+        assert_eq!(
+            result.err().unwrap(),
+            format!(
+                "The following artist names are too long (greater than 100 characters): {}",
+                long_artist_name
+            )
+        );
     }
 
     #[test]
@@ -299,8 +308,10 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), "No valid artists provided after processing. Please provide at least one valid artist.".to_string());
+        assert_eq!(
+            result.err().unwrap(),
+            "No valid artists provided after processing. Please provide at least one valid artist."
+                .to_string()
+        );
     }
-    
 }
-

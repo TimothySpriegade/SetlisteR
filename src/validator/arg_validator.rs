@@ -3,7 +3,6 @@ use crate::StreamingService;
 use crate::validator::artist_validator::ArtistValidator;
 use crate::validator::playlist_name_validator::PlaylistNameValidator;
 
-
 pub struct ArgValidator {}
 
 pub struct SanitizedArgs {

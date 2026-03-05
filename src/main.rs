@@ -1,6 +1,7 @@
-use clap::{Parser, ValueEnum};
 use crate::validator::arg_validator::ArgValidator;
+use clap::{Parser, ValueEnum};
 
+pub mod api;
 mod validator;
 
 #[derive(Parser)]
@@ -13,8 +14,8 @@ struct Args {
     // the name of the playlist to create
     playlist_name: Option<String>,
 
-    // streaming service to use, either "spotify" or "youtube_music"
-    #[arg(value_enum)]
+    // streaming service to use, either "spotify" or "youtube_music" currently supported
+    #[arg(short, long, value_enum)]
     service: StreamingService,
 }
 
@@ -24,8 +25,12 @@ enum StreamingService {
     YouTubeMusic,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
+
+    dotenvy::dotenv().ok();
+    let api_key = std::env::var("SETLIST_FM_API_KEY").expect("SETLIST_FM_API_KEY must be set");
 
     let _sanitized_args = match ArgValidator::validate(&args) {
         Ok(validated_args) => validated_args,
@@ -34,4 +39,10 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
+    for artist in &_sanitized_args.artists {
+        let setlist_fm_setlist_data = setlist_fm_client.get_setlist_by_artist(artist, 1).await;
+        println!("{:#?}", setlist_fm_setlist_data);
+    }
 }

@@ -1,5 +1,5 @@
-use crate::validator::playlist_name_validator::PlaylistNameValidator;
 use crate::Args;
+use crate::validator::playlist_name_validator::PlaylistNameValidator;
 
 #[cfg(test)]
 mod tests {
