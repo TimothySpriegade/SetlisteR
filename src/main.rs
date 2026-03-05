@@ -17,6 +17,9 @@ struct Args {
     // streaming service to use, either "spotify" or "youtube_music" currently supported
     #[arg(short, long, value_enum)]
     service: StreamingService,
+
+    #[arg(short, long, default_value_t = 1)]
+    page_depth: u16,
 }
 
 #[derive(ValueEnum, Clone)]
@@ -32,7 +35,7 @@ async fn main() {
     dotenvy::dotenv().ok();
     let api_key = std::env::var("SETLIST_FM_API_KEY").expect("SETLIST_FM_API_KEY must be set");
 
-    let _sanitized_args = match ArgValidator::validate(&args) {
+    let sanitized_args = match ArgValidator::validate(&args) {
         Ok(validated_args) => validated_args,
         Err(err) => {
             eprintln!("Error validating arguments: {}", err);
@@ -41,8 +44,8 @@ async fn main() {
     };
 
     let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
-    for artist in &_sanitized_args.artists {
-        let setlist_fm_setlist_data = setlist_fm_client.get_setlist_by_artist(artist, 1).await;
+    for artist in &sanitized_args.artists {
+        let setlist_fm_setlist_data = setlist_fm_client.get_setlist_by_artist(artist, args.page_depth).await;
         println!("{:#?}", setlist_fm_setlist_data);
     }
 }
