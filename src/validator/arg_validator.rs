@@ -14,11 +14,11 @@ pub struct SanitizedArgs {
 impl ArgValidator {
     pub fn validate(args: &Args) -> Result<SanitizedArgs, String> {
         let artists = ArtistValidator::validate(args)?;
-        let _playlist_name = PlaylistNameValidator::validate(args, &artists)?;
+        let playlist_name = PlaylistNameValidator::validate(args, &artists)?;
 
         Ok(SanitizedArgs {
             artists,
-            playlist_name: _playlist_name,
+            playlist_name,
             service: args.service.clone(),
         })
     }
