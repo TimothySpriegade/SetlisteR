@@ -1,0 +1,2 @@
+mod artists_validator;
+
