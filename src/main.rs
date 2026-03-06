@@ -1,9 +1,10 @@
 use crate::validator::arg_validator::ArgValidator;
 use clap::{Parser, ValueEnum};
 
-pub mod api;
+mod api;
 mod validator;
-pub mod data;
+mod data;
+mod models;
 
 #[derive(Parser)]
 struct Args {

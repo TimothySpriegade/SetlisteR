@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::api::models::SetlistResponse;
+use crate::models::setlistfm_response_models::SetlistResponse;
 
 pub struct SetlistFmClient {
     api_key: String,
