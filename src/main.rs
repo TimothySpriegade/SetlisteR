@@ -3,6 +3,7 @@ use clap::{Parser, ValueEnum};
 
 pub mod api;
 mod validator;
+pub mod data;
 
 #[derive(Parser)]
 struct Args {
@@ -19,7 +20,7 @@ struct Args {
     service: StreamingService,
 
     // how many pages of setlist data to fetch from the setlist.fm API
-    #[arg(short, long, default_value_t = 1)]
+    #[arg(long, default_value_t = 1)]
     page_depth: u16,
 }
 

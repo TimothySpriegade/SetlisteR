@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SetlistResponse {
+    #[serde(rename = "type")]
+    pub kind: Option<String>,
     pub setlist: Vec<Setlist>,
     pub total: u32,
     pub page: u32,
@@ -14,7 +16,7 @@ pub struct Setlist {
     pub artist: Artist,
     pub venue: Venue,
     pub tour: Option<Tour>,
-    pub set: Vec<Set>,
+    pub sets: Sets,
     pub info: Option<String>,
     pub url: String,
     pub id: String,
@@ -24,6 +26,11 @@ pub struct Setlist {
     pub event_date: String,
     #[serde(rename = "lastUpdated")]
     pub last_updated: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Sets {
+    pub set: Vec<Set>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
