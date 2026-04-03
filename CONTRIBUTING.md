@@ -114,11 +114,10 @@ We adhere to standard Rust coding conventions. Before submitting a pull request,
     ```
 
 ## Recognition
-We appreciate all contributions! Core contributors and community members who submit valuable PRs, report critical bugs, or help others in the community will be recognized. Thank you for helping make SetlisteR better!
 <a href="https://github.com/timothyspriegade/SetlisteR/graphs/contributors">
 <img src="https://contrib.rocks/image?repo=timothyspriegade/SetlisteR" />
 </a>
 
-Thanks for contributing to 8Stash—every issue, discussion, and PR helps make it better. Happy hacking!
+We appreciate all contributions! Core contributors and community members who submit valuable PRs, report critical bugs, or help others in the community will be recognized. Thank you for helping make SetlisteR better!
 <h1>
 </h1>
