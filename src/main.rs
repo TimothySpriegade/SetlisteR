@@ -1,5 +1,8 @@
 use crate::validator::arg_validator::ArgValidator;
 use clap::{Parser, ValueEnum};
+use crate::data::models::meta_data::{CollectedData, MetaData};
+use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
+use crate::data::setlist_data_processor::SetlistDataProcessor;
 
 mod api;
 mod data;
@@ -46,7 +49,7 @@ async fn main() {
     };
 
     let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
-    let mut collected_data = data::models::meta_data::CollectedData {
+    let mut collected_data = CollectedData {
         collected_meta_data: Vec::new(),
     };
     for artist in &sanitized_args.artists {
@@ -54,32 +57,36 @@ async fn main() {
             .get_setlist_by_artist(artist, args.page_depth)
             .await;
 
-        let setlists_from_api: Vec<data::models::setlistfm_response_models::Setlist> =
-            data
-                .into_iter()
-                .filter_map(|res| res.ok())
-                .flat_map(|resp| resp.setlist)
-                .collect();
-
-        let mut analyzed_data =
-            data::setlist_data_processor::SetlistDataProcessor::reduce_to_song_stats(
-                &setlists_from_api,
-            );
-
-        analyzed_data = data::setlist_data_processor::SetlistDataProcessor::calculate_mean_positions(
-            &mut analyzed_data,
-        );
-
-        let data_with_meta_information = data::models::meta_data::MetaData {
-            artist_name: artist.to_string(),
-            song_stats: analyzed_data
-        };
-        
-        collected_data.collected_meta_data.push(data_with_meta_information);
+    run_analysis(&mut collected_data, data, artist);
     }
     
     for data in collected_data.collected_meta_data {
         println!("Artist: {}", data.artist_name);
         println!("{:#?}", data.song_stats)
     };
+}
+
+fn run_analysis(collection_list: &mut CollectedData, setlist_api_data: Vec<Result<SetlistResponse, String>>, artist: &String) {
+    let setlists_from_api: Vec<Setlist> =
+        setlist_api_data
+            .into_iter()
+            .filter_map(|res| res.ok())
+            .flat_map(|resp| resp.setlist)
+            .collect();
+
+    let mut analyzed_data =
+        SetlistDataProcessor::reduce_to_song_stats(
+            &setlists_from_api,
+        );
+
+    analyzed_data = SetlistDataProcessor::calculate_mean_positions(
+        &mut analyzed_data,
+    );
+
+    let data_with_meta_information = MetaData {
+        artist_name: artist.to_string(),
+        song_stats: analyzed_data
+    };
+
+    collection_list.collected_meta_data.push(data_with_meta_information);
 }
