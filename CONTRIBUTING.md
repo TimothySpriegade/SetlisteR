@@ -69,9 +69,10 @@ To set up SetlisteR for local development, follow these steps:
 ## Project Structure
 Here's a brief overview of our standard Rust project layout:
 - `src/main.rs`: The main entry point parsing arguments and calling the API.
-- `src/api/`: Logic for handling API requests (like setlist.fm).
+- `src/api/`: Logic for handling API requests (like the setlist.fm client). This directory is strictly for API communication.
 - `src/validator/`: Contains modules for validating input arguments.
 - `src/data/`: Data structures and models for serialization/deserialization.
+- `src/data/models/`: New external API data models (e.g., `setlistfm_response_models.rs`) must go here.
 
 ## Testing Guidelines
 We expect all code contributions to pass the existing test suite and include new tests for new functionality.

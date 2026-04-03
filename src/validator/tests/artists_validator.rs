@@ -149,9 +149,7 @@ mod tests {
     #[test]
     fn test_validate_single_artist() {
         // Arrange
-        let args = ArgsMotherObject::default()
-            .with_artists("Artist 1")
-            .build();
+        let args = ArgsMotherObject::default().with_artists("Artist 1").build();
 
         // Act
         let artists = ArtistValidator::validate(&args).unwrap();
@@ -255,9 +253,7 @@ mod tests {
     #[test]
     fn test_validate_only_non_ascii_artists_returns_error() {
         // Arrange
-        let args = ArgsMotherObject::default()
-            .with_artists("ïïï, üüü")
-            .build();
+        let args = ArgsMotherObject::default().with_artists("ïïï, üüü").build();
 
         // Act
         let result = ArtistValidator::validate(&args);
@@ -301,7 +297,9 @@ mod tests {
     #[test]
     fn test_page_depth_maximum_u16_value() {
         // Arrange
-        let args = ArgsMotherObject::default().with_page_depth(u16::MAX).build();
+        let args = ArgsMotherObject::default()
+            .with_page_depth(u16::MAX)
+            .build();
 
         // Assert
         assert_eq!(args.page_depth, u16::MAX);

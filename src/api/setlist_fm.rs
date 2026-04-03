@@ -57,5 +57,3 @@ impl SetlistFmClient {
         all_setlists
     }
 }
-
-

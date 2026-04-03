@@ -2,8 +2,8 @@ use crate::validator::arg_validator::ArgValidator;
 use clap::{Parser, ValueEnum};
 
 mod api;
-mod validator;
 mod data;
+mod validator;
 
 #[derive(Parser)]
 struct Args {
@@ -46,8 +46,32 @@ async fn main() {
     };
 
     let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
+    let mut setlist_fm_setlist_raw_data: Vec<
+        Result<data::models::setlistfm_response_models::SetlistResponse, String>,
+    > = Vec::new();
     for artist in &sanitized_args.artists {
-        let setlist_fm_setlist_data = setlist_fm_client.get_setlist_by_artist(artist, args.page_depth).await;
-        println!("{:#?}", setlist_fm_setlist_data);
+        let data = setlist_fm_client
+            .get_setlist_by_artist(artist, args.page_depth)
+            .await;
+
+        setlist_fm_setlist_raw_data.extend(data);
     }
+
+    let setlists_from_api: Vec<data::models::setlistfm_response_models::Setlist> =
+        setlist_fm_setlist_raw_data
+            .into_iter()
+            .filter_map(|res| res.ok())
+            .flat_map(|resp| resp.setlist)
+            .collect();
+
+    let mut analyzed_data =
+        data::setlist_data_processor::SetlistDataProcessor::reduce_to_song_stats(
+            &setlists_from_api,
+        );
+
+    analyzed_data = data::setlist_data_processor::SetlistDataProcessor::calculate_mean_positions(
+        &mut analyzed_data,
+    );
+
+    print!("Analyzed Data: {:#?}", analyzed_data);
 }
