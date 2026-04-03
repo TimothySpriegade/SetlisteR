@@ -46,32 +46,40 @@ async fn main() {
     };
 
     let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
-    let mut setlist_fm_setlist_raw_data: Vec<
-        Result<data::models::setlistfm_response_models::SetlistResponse, String>,
-    > = Vec::new();
+    let mut collected_data = data::models::meta_data::CollectedData {
+        collected_meta_data: Vec::new(),
+    };
     for artist in &sanitized_args.artists {
         let data = setlist_fm_client
             .get_setlist_by_artist(artist, args.page_depth)
             .await;
 
-        setlist_fm_setlist_raw_data.extend(data);
-    }
+        let setlists_from_api: Vec<data::models::setlistfm_response_models::Setlist> =
+            data
+                .into_iter()
+                .filter_map(|res| res.ok())
+                .flat_map(|resp| resp.setlist)
+                .collect();
 
-    let setlists_from_api: Vec<data::models::setlistfm_response_models::Setlist> =
-        setlist_fm_setlist_raw_data
-            .into_iter()
-            .filter_map(|res| res.ok())
-            .flat_map(|resp| resp.setlist)
-            .collect();
+        let mut analyzed_data =
+            data::setlist_data_processor::SetlistDataProcessor::reduce_to_song_stats(
+                &setlists_from_api,
+            );
 
-    let mut analyzed_data =
-        data::setlist_data_processor::SetlistDataProcessor::reduce_to_song_stats(
-            &setlists_from_api,
+        analyzed_data = data::setlist_data_processor::SetlistDataProcessor::calculate_mean_positions(
+            &mut analyzed_data,
         );
 
-    analyzed_data = data::setlist_data_processor::SetlistDataProcessor::calculate_mean_positions(
-        &mut analyzed_data,
-    );
-
-    print!("Analyzed Data: {:#?}", analyzed_data);
+        let data_with_meta_information = data::models::meta_data::MetaData {
+            artist_name: artist.to_string(),
+            song_stats: analyzed_data
+        };
+        
+        collected_data.collected_meta_data.push(data_with_meta_information);
+    }
+    
+    for data in collected_data.collected_meta_data {
+        println!("Artist: {}", data.artist_name);
+        println!("{:#?}", data.song_stats)
+    };
 }
