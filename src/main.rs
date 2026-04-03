@@ -4,7 +4,6 @@ use clap::{Parser, ValueEnum};
 mod api;
 mod validator;
 mod data;
-mod models;
 
 #[derive(Parser)]
 struct Args {
