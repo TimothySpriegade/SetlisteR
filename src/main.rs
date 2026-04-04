@@ -3,6 +3,8 @@ use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::validator::arg_validator::ArgValidator;
 use clap::{Parser, ValueEnum};
+use std::sync::Arc;
+use tokio::task::JoinSet;
 
 mod api;
 mod data;
@@ -48,16 +50,33 @@ async fn main() {
         }
     };
 
-    let setlist_fm_client = api::setlist_fm::SetlistFmClient::new(api_key);
+    let setlist_fm_client = Arc::new(api::setlist_fm::SetlistFmClient::new(api_key));
+    let page_depth = args.page_depth;
+
+    let mut tasks = JoinSet::new();
+
+    for artist in sanitized_args.artists.into_iter() {
+        let client = Arc::clone(&setlist_fm_client);
+
+        tasks.spawn(async move {
+            let data = client.get_setlist_by_artist(&artist, page_depth).await;
+            (artist, data)
+        });
+    }
+
     let mut collected_data = CollectedData {
         collected_meta_data: Vec::new(),
     };
-    for artist in &sanitized_args.artists {
-        let data = setlist_fm_client
-            .get_setlist_by_artist(artist, args.page_depth)
-            .await;
 
-        run_analysis(&mut collected_data, data, artist);
+    while let Some(result) = tasks.join_next().await {
+        match result {
+            Ok((artist, data)) => {
+                run_analysis(&mut collected_data, data, &artist);
+            }
+            Err(err) => {
+                eprintln!("Artist task failed: {err}");
+            }
+        }
     }
 
     for data in collected_data.collected_meta_data {

@@ -1,14 +1,19 @@
-use std::time::Duration;
-
 use crate::data::models::setlistfm_response_models::SetlistResponse;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 
 pub struct SetlistFmClient {
     api_key: String,
+    next_allowed_request: Arc<Mutex<Instant>>,
 }
 
 impl SetlistFmClient {
     pub fn new(api_key: String) -> Self {
-        SetlistFmClient { api_key }
+        SetlistFmClient {
+            api_key,
+            next_allowed_request: Arc::new(Mutex::new(Instant::now())),
+        }
     }
 
     pub async fn get_setlist_by_artist(
@@ -25,6 +30,8 @@ impl SetlistFmClient {
                 "https://api.setlist.fm/rest/1.0/search/setlists?artistName={}&p={}",
                 artist, page
             );
+
+            self.wait_for_slot().await;
 
             let response = client
                 .get(&request_uri)
@@ -46,14 +53,20 @@ impl SetlistFmClient {
                 }
             }
 
-            // Sleep for 1 second after every 2 pages to avoid hitting rate limits of 2 requests per second, also the reason why no multithreading is used here
-            if page % 2 == 0 {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-
             page += 1;
         }
 
         all_setlists
+    }
+
+    async fn wait_for_slot(&self) {
+        let mut guard = self.next_allowed_request.lock().await;
+        let now = Instant::now();
+
+        if *guard > now {
+            tokio::time::sleep_until((*guard).into()).await;
+        }
+
+        *guard = Instant::now() + Duration::from_millis(500); // 2 req/sec api ratelimit from setlistfm
     }
 }

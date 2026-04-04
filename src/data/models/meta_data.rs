@@ -1,6 +1,5 @@
-use std::collections::HashMap;
 use crate::data::models::song_stats::SongStats;
-
+use std::collections::HashMap;
 
 pub struct CollectedData {
     pub collected_meta_data: Vec<MetaData>,

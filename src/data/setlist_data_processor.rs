@@ -12,7 +12,7 @@ impl SetlistDataProcessor {
         for show in setlists {
             Self::process_show(show, &mut stats_map);
         }
-        
+
         Self::calculate_mean_positions(&mut stats_map);
 
         stats_map
@@ -23,7 +23,10 @@ impl SetlistDataProcessor {
             return 0.0;
         }
 
-        let total_songs: usize = setlists.iter().map(Self::count_non_tape_songs_in_show).sum();
+        let total_songs: usize = setlists
+            .iter()
+            .map(Self::count_non_tape_songs_in_show)
+            .sum();
         total_songs as f32 / setlists.len() as f32
     }
 

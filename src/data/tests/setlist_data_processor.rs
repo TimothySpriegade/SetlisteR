@@ -178,8 +178,10 @@ mod tests {
         );
 
         // Act
-        let average =
-            SetlistDataProcessor::average_songs_per_setlist(&[show_with_two_songs, show_with_four_songs]);
+        let average = SetlistDataProcessor::average_songs_per_setlist(&[
+            show_with_two_songs,
+            show_with_four_songs,
+        ]);
 
         // Assert
         assert_eq!(average, 3.0);
@@ -194,4 +196,3 @@ mod tests {
         assert_eq!(average, 0.0);
     }
 }
-
