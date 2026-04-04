@@ -12,8 +12,19 @@ impl SetlistDataProcessor {
         for show in setlists {
             Self::process_show(show, &mut stats_map);
         }
+        
+        Self::calculate_mean_positions(&mut stats_map);
 
         stats_map
+    }
+
+    pub fn average_songs_per_setlist(setlists: &[Setlist]) -> f32 {
+        if setlists.is_empty() {
+            return 0.0;
+        }
+
+        let total_songs: usize = setlists.iter().map(Self::count_non_tape_songs_in_show).sum();
+        total_songs as f32 / setlists.len() as f32
     }
 
     fn process_show(show: &Setlist, stats_map: &mut HashMap<String, SongStats>) {
@@ -70,20 +81,6 @@ impl SetlistDataProcessor {
         }
     }
 
-    fn resolve_song_name(song: &Song) -> String {
-        match &song.name {
-            Some(name) if !name.trim().is_empty() => name.clone(),
-            _ => match &song.info {
-                Some(info) if !info.trim().is_empty() => info.clone(),
-                _ => "Unknown Song".to_string(),
-            },
-        }
-    }
-
-    fn parse_event_date(event_date: &str) -> Option<NaiveDate> {
-        NaiveDate::parse_from_str(event_date, "%d-%m-%Y").ok()
-    }
-
     fn update_song_stats(
         stats_map: &mut HashMap<String, SongStats>,
         song_name: String,
@@ -128,7 +125,7 @@ impl SetlistDataProcessor {
         }
     }
 
-    pub fn calculate_mean_positions(
+    fn calculate_mean_positions(
         stats_map: &mut HashMap<String, SongStats>,
     ) -> HashMap<String, SongStats> {
         for stats in stats_map.values_mut() {
@@ -142,5 +139,32 @@ impl SetlistDataProcessor {
         }
 
         stats_map.clone()
+    }
+
+    fn count_non_tape_songs_in_show(show: &Setlist) -> usize {
+        show.sets
+            .set
+            .iter()
+            .map(|set| {
+                set.song
+                    .iter()
+                    .filter(|song| !song.tape.unwrap_or(false))
+                    .count()
+            })
+            .sum()
+    }
+
+    fn resolve_song_name(song: &Song) -> String {
+        match &song.name {
+            Some(name) if !name.trim().is_empty() => name.clone(),
+            _ => match &song.info {
+                Some(info) if !info.trim().is_empty() => info.clone(),
+                _ => "Unknown Song".to_string(),
+            },
+        }
+    }
+
+    fn parse_event_date(event_date: &str) -> Option<NaiveDate> {
+        NaiveDate::parse_from_str(event_date, "%d-%m-%Y").ok()
     }
 }

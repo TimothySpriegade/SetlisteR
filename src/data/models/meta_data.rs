@@ -8,5 +8,6 @@ pub struct CollectedData {
 #[derive(Debug, Clone, Default)]
 pub struct MetaData {
     pub artist_name: String,
-    pub song_stats: HashMap<String, SongStats>
+    pub song_stats: HashMap<String, SongStats>,
+    pub mean_song_count: f32,
 }

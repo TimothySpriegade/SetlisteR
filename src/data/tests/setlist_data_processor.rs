@@ -37,6 +37,7 @@ mod tests {
         assert_eq!(song_a.encore_count, 1);
         assert_eq!(song_a.closer_count, 0);
         assert_eq!(song_a.last_played, "21-09-2023");
+        assert_eq!(song_a.mean_positions_played.last(), Some(&2.0));
 
         let song_c = stats_map.get("Song C").unwrap();
         assert_eq!(song_c.total_plays, 1);
@@ -45,6 +46,7 @@ mod tests {
         assert_eq!(song_c.encore_count, 0);
         assert_eq!(song_c.closer_count, 1);
         assert_eq!(song_c.last_played, "21-09-2023");
+        assert_eq!(song_c.mean_positions_played.last(), Some(&2.0));
     }
 
     #[test]
@@ -115,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_mean_positions_calculates_expected_average() {
+    fn test_reduce_to_song_stats_calculates_expected_mean_positions() {
         // Arrange
         let show = SetlistMotherObject::show(
             "21-09-2023",
@@ -128,19 +130,68 @@ mod tests {
                 ],
             )],
         );
-        let mut stats_map = SetlistDataProcessor::reduce_to_song_stats(&[show]);
-
         // Act
-        let analyzed = SetlistDataProcessor::calculate_mean_positions(&mut stats_map);
+        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[show]);
 
         // Assert
-        let song_a = analyzed.get("Song A").unwrap();
+        let song_a = stats_map.get("Song A").unwrap();
         assert_eq!(song_a.positions_played, vec![1, 3]);
-        assert_eq!(song_a.mean_positions_played, vec![2.0]);
+        assert_eq!(song_a.mean_positions_played.last(), Some(&2.0));
 
-        let song_b = analyzed.get("Song B").unwrap();
+        let song_b = stats_map.get("Song B").unwrap();
         assert_eq!(song_b.positions_played, vec![2]);
-        assert_eq!(song_b.mean_positions_played, vec![2.0]);
+        assert_eq!(song_b.mean_positions_played.last(), Some(&2.0));
+    }
+
+    #[test]
+    fn test_average_songs_per_setlist_calculates_expected_average() {
+        // Arrange
+        let show_with_two_songs = SetlistMotherObject::show(
+            "21-09-2023",
+            vec![SetlistMotherObject::set(
+                None,
+                vec![
+                    SetlistMotherObject::song(Some("Song A"), None, Some(false)),
+                    SetlistMotherObject::song(Some("Tape Intro"), None, Some(true)),
+                    SetlistMotherObject::song(Some("Song B"), None, Some(false)),
+                ],
+            )],
+        );
+        let show_with_four_songs = SetlistMotherObject::show(
+            "22-09-2023",
+            vec![
+                SetlistMotherObject::set(
+                    None,
+                    vec![
+                        SetlistMotherObject::song(Some("Song C"), None, Some(false)),
+                        SetlistMotherObject::song(Some("Song D"), None, Some(false)),
+                    ],
+                ),
+                SetlistMotherObject::set(
+                    Some(1),
+                    vec![
+                        SetlistMotherObject::song(Some("Song E"), None, Some(false)),
+                        SetlistMotherObject::song(Some("Song F"), None, Some(false)),
+                    ],
+                ),
+            ],
+        );
+
+        // Act
+        let average =
+            SetlistDataProcessor::average_songs_per_setlist(&[show_with_two_songs, show_with_four_songs]);
+
+        // Assert
+        assert_eq!(average, 3.0);
+    }
+
+    #[test]
+    fn test_average_songs_per_setlist_returns_zero_for_empty_input() {
+        // Act
+        let average = SetlistDataProcessor::average_songs_per_setlist(&[]);
+
+        // Assert
+        assert_eq!(average, 0.0);
     }
 }
 

@@ -1,8 +1,8 @@
-use crate::validator::arg_validator::ArgValidator;
-use clap::{Parser, ValueEnum};
 use crate::data::models::meta_data::{CollectedData, MetaData};
 use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
+use crate::validator::arg_validator::ArgValidator;
+use clap::{Parser, ValueEnum};
 
 mod api;
 mod data;
@@ -57,36 +57,38 @@ async fn main() {
             .get_setlist_by_artist(artist, args.page_depth)
             .await;
 
-    run_analysis(&mut collected_data, data, artist);
+        run_analysis(&mut collected_data, data, artist);
     }
-    
+
     for data in collected_data.collected_meta_data {
         println!("Artist: {}", data.artist_name);
+        print!("Average songs per setlist: {:.2}\n", data.mean_song_count);
         println!("{:#?}", data.song_stats)
-    };
+    }
 }
 
-fn run_analysis(collection_list: &mut CollectedData, setlist_api_data: Vec<Result<SetlistResponse, String>>, artist: &String) {
-    let setlists_from_api: Vec<Setlist> =
-        setlist_api_data
-            .into_iter()
-            .filter_map(|res| res.ok())
-            .flat_map(|resp| resp.setlist)
-            .collect();
+fn run_analysis(
+    collection_list: &mut CollectedData,
+    setlist_api_data: Vec<Result<SetlistResponse, String>>,
+    artist: &String,
+) {
+    let setlists_from_api: Vec<Setlist> = setlist_api_data
+        .into_iter()
+        .filter_map(|res| res.ok())
+        .flat_map(|resp| resp.setlist)
+        .collect();
 
-    let mut analyzed_data =
-        SetlistDataProcessor::reduce_to_song_stats(
-            &setlists_from_api,
-        );
+    let mean_song_count = SetlistDataProcessor::average_songs_per_setlist(&setlists_from_api);
 
-    analyzed_data = SetlistDataProcessor::calculate_mean_positions(
-        &mut analyzed_data,
-    );
+    let analyzed_data = SetlistDataProcessor::reduce_to_song_stats(&setlists_from_api);
 
     let data_with_meta_information = MetaData {
         artist_name: artist.to_string(),
-        song_stats: analyzed_data
+        mean_song_count: mean_song_count,
+        song_stats: analyzed_data,
     };
 
-    collection_list.collected_meta_data.push(data_with_meta_information);
+    collection_list
+        .collected_meta_data
+        .push(data_with_meta_information);
 }
