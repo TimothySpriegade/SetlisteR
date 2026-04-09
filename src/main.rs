@@ -39,8 +39,7 @@ enum StreamingService {
 async fn main() {
     let args = Args::parse();
 
-    dotenvy::dotenv().ok();
-    let api_key = std::env::var("SETLIST_FM_API_KEY").expect("SETLIST_FM_API_KEY must be set");
+    let api_key = load_api_key();
 
     let sanitized_args = match ArgValidator::validate(&args) {
         Ok(validated_args) => validated_args,
@@ -51,13 +50,27 @@ async fn main() {
     };
 
     let setlist_fm_client = Arc::new(api::setlist_fm::SetlistFmClient::new(api_key));
-    let page_depth = args.page_depth;
 
+    let collected_data =
+        fetch_all_artists(setlist_fm_client, sanitized_args.artists, args.page_depth).await;
+
+    print_results(&collected_data);
+}
+
+fn load_api_key() -> String {
+    dotenvy::dotenv().ok();
+    std::env::var("SETLIST_FM_API_KEY").expect("SETLIST_FM_API_KEY must be set")
+}
+
+async fn fetch_all_artists(
+    client: Arc<api::setlist_fm::SetlistFmClient>,
+    artists: Vec<String>,
+    page_depth: u16,
+) -> CollectedData {
     let mut tasks = JoinSet::new();
 
-    for artist in sanitized_args.artists.into_iter() {
-        let client = Arc::clone(&setlist_fm_client);
-
+    for artist in artists {
+        let client = Arc::clone(&client);
         tasks.spawn(async move {
             let data = client.get_setlist_by_artist(&artist, page_depth).await;
             (artist, data)
@@ -79,7 +92,11 @@ async fn main() {
         }
     }
 
-    for data in collected_data.collected_meta_data {
+    collected_data
+}
+
+fn print_results(collected_data: &CollectedData) {
+    for data in &collected_data.collected_meta_data {
         println!("Artist: {}", data.artist_name);
         print!("Average songs per setlist: {:.2}\n", data.mean_song_count);
         println!("{:#?}", data.song_stats)
@@ -103,7 +120,7 @@ fn run_analysis(
 
     let data_with_meta_information = MetaData {
         artist_name: artist.to_string(),
-        mean_song_count: mean_song_count,
+        mean_song_count,
         song_stats: analyzed_data,
     };
 
