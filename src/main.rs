@@ -3,6 +3,7 @@ use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::validator::arg_validator::ArgValidator;
 use clap::{Parser, ValueEnum};
+use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::task::JoinSet;
 
@@ -51,8 +52,10 @@ async fn main() {
 
     let setlist_fm_client = Arc::new(api::setlist_fm::SetlistFmClient::new(api_key));
 
-    let collected_data =
+    let raw_data =
         fetch_all_artists(setlist_fm_client, sanitized_args.artists, args.page_depth).await;
+
+    let collected_data = run_analysis(raw_data);
 
     print_results(&collected_data);
 }
@@ -66,7 +69,7 @@ async fn fetch_all_artists(
     client: Arc<api::setlist_fm::SetlistFmClient>,
     artists: Vec<String>,
     page_depth: u16,
-) -> CollectedData {
+) -> Vec<(String, Vec<Result<SetlistResponse, String>>)> {
     let mut tasks = JoinSet::new();
 
     for artist in artists {
@@ -77,14 +80,12 @@ async fn fetch_all_artists(
         });
     }
 
-    let mut collected_data = CollectedData {
-        collected_meta_data: Vec::new(),
-    };
+    let mut results = Vec::new();
 
     while let Some(result) = tasks.join_next().await {
         match result {
             Ok((artist, data)) => {
-                run_analysis(&mut collected_data, data, &artist);
+                results.push((artist, data));
             }
             Err(err) => {
                 eprintln!("Artist task failed: {err}");
@@ -92,7 +93,7 @@ async fn fetch_all_artists(
         }
     }
 
-    collected_data
+    results
 }
 
 fn print_results(collected_data: &CollectedData) {
@@ -103,28 +104,29 @@ fn print_results(collected_data: &CollectedData) {
     }
 }
 
-fn run_analysis(
-    collection_list: &mut CollectedData,
-    setlist_api_data: Vec<Result<SetlistResponse, String>>,
-    artist: &String,
-) {
-    let setlists_from_api: Vec<Setlist> = setlist_api_data
-        .into_iter()
-        .filter_map(|res| res.ok())
-        .flat_map(|resp| resp.setlist)
+fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -> CollectedData {
+    let meta_data: Vec<MetaData> = raw_data
+        .into_par_iter()
+        .map(|(artist, setlist_api_data)| {
+            let setlists_from_api: Vec<Setlist> = setlist_api_data
+                .into_iter()
+                .filter_map(|res| res.ok())
+                .flat_map(|resp| resp.setlist)
+                .collect();
+
+            let mean_song_count =
+                SetlistDataProcessor::average_songs_per_setlist(&setlists_from_api);
+            let analyzed_data = SetlistDataProcessor::reduce_to_song_stats(&setlists_from_api);
+
+            MetaData {
+                artist_name: artist,
+                mean_song_count,
+                song_stats: analyzed_data,
+            }
+        })
         .collect();
 
-    let mean_song_count = SetlistDataProcessor::average_songs_per_setlist(&setlists_from_api);
-
-    let analyzed_data = SetlistDataProcessor::reduce_to_song_stats(&setlists_from_api);
-
-    let data_with_meta_information = MetaData {
-        artist_name: artist.to_string(),
-        mean_song_count,
-        song_stats: analyzed_data,
-    };
-
-    collection_list
-        .collected_meta_data
-        .push(data_with_meta_information);
+    CollectedData {
+        collected_meta_data: meta_data,
+    }
 }
