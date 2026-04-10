@@ -1,7 +1,8 @@
 use crate::data::models::meta_data::{CollectedData, MetaData};
 use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
-use crate::validator::arg_validator::ArgValidator;
+use crate::secrets_manager::secrets_manager::SecretsManager;
+use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
 use clap::{Parser, ValueEnum};
 use rayon::prelude::*;
 use std::sync::Arc;
@@ -9,6 +10,7 @@ use tokio::task::JoinSet;
 
 mod api;
 mod data;
+mod secrets_manager;
 mod validator;
 
 #[derive(Parser)]
@@ -28,6 +30,10 @@ struct Args {
     // how many pages of setlist data to fetch from the setlist.fm API
     #[arg(long, default_value_t = 1)]
     page_depth: u16,
+
+    /// Store the setlist.fm API key in the system keyring and exit
+    #[arg(long)]
+    setlist_api_key: Option<String>,
 }
 
 #[derive(ValueEnum, Clone)]
@@ -38,31 +44,40 @@ enum StreamingService {
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
-
-    let api_key = load_api_key();
-
-    let sanitized_args = match ArgValidator::validate(&args) {
-        Ok(validated_args) => validated_args,
-        Err(err) => {
-            eprintln!("Error validating arguments: {}", err);
-            std::process::exit(1);
-        }
-    };
-
-    let setlist_fm_client = Arc::new(api::setlist_fm::SetlistFmClient::new(api_key));
+    let sanitized_args = parse_and_validate_args();
+    let api_key = resolve_api_key(&sanitized_args);
+    let client = build_setlist_client(api_key);
 
     let raw_data =
-        fetch_all_artists(setlist_fm_client, sanitized_args.artists, args.page_depth).await;
-
+        fetch_all_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
     let collected_data = run_analysis(raw_data);
 
     print_results(&collected_data);
 }
 
-fn load_api_key() -> String {
-    dotenvy::dotenv().ok();
-    std::env::var("SETLIST_FM_API_KEY").expect("SETLIST_FM_API_KEY must be set")
+fn parse_and_validate_args() -> SanitizedArgs {
+    let args = Args::parse();
+    match ArgValidator::validate(&args) {
+        Ok(validated_args) => validated_args,
+        Err(err) => {
+            eprintln!("Error validating arguments: {}", err);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn resolve_api_key(sanitized_args: &SanitizedArgs) -> String {
+    let mut secret_manager = SecretsManager::new();
+    secret_manager
+        .set_keys_from_args(sanitized_args.secret_hashmap.clone())
+        .expect("Secret configuration failed");
+    secret_manager
+        .get_setlist_fm_api_key()
+        .expect("Setlist.fm API key not found in secrets manager")
+}
+
+fn build_setlist_client(api_key: String) -> Arc<api::setlist_fm::SetlistFmClient> {
+    Arc::new(api::setlist_fm::SetlistFmClient::new(api_key))
 }
 
 async fn fetch_all_artists(
@@ -96,14 +111,6 @@ async fn fetch_all_artists(
     results
 }
 
-fn print_results(collected_data: &CollectedData) {
-    for data in &collected_data.collected_meta_data {
-        println!("Artist: {}", data.artist_name);
-        print!("Average songs per setlist: {:.2}\n", data.mean_song_count);
-        println!("{:#?}", data.song_stats)
-    }
-}
-
 fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -> CollectedData {
     let meta_data: Vec<MetaData> = raw_data
         .into_par_iter()
@@ -128,5 +135,13 @@ fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -
 
     CollectedData {
         collected_meta_data: meta_data,
+    }
+}
+
+fn print_results(collected_data: &CollectedData) {
+    for data in &collected_data.collected_meta_data {
+        println!("Artist: {}", data.artist_name);
+        print!("Average songs per setlist: {:.2}\n", data.mean_song_count);
+        println!("{:#?}", data.song_stats)
     }
 }

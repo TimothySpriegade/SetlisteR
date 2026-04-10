@@ -7,7 +7,8 @@ edition = "2024"
 clap = { version = "4.5.60", features = ["derive"] }
 reqwest = { version = "0.13.2", features = ["json"] }
 tokio = { version = "1.50.0", features = ["full"] }
-dotenvy = "0.15.7"
 serde = { version = "1", features = ["derive"] }
 chrono = "0.4.42"
 rayon = "1"
+keyring = "3"
+

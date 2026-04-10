@@ -6,6 +6,7 @@ pub struct ArgsMotherObject {
     playlist_name: Option<String>,
     service: StreamingService,
     page_depth: u16,
+    setlist_api_key: Option<String>,
 }
 
 impl ArgsMotherObject {
@@ -15,6 +16,7 @@ impl ArgsMotherObject {
             playlist_name: None,
             service: StreamingService::Spotify,
             page_depth: 1,
+            setlist_api_key: None,
         }
     }
 
@@ -38,12 +40,18 @@ impl ArgsMotherObject {
         self
     }
 
+    pub fn with_setlist_api_key(mut self, setlist_api_key: &str) -> Self {
+        self.setlist_api_key = Some(setlist_api_key.to_string());
+        self
+    }
+
     pub fn build(self) -> Args {
         Args {
             artists: self.artists,
             playlist_name: self.playlist_name,
             service: self.service,
             page_depth: self.page_depth,
+            setlist_api_key: self.setlist_api_key,
         }
     }
 }
