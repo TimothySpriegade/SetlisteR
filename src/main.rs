@@ -1,9 +1,10 @@
+use crate::data::models::args::Args;
 use crate::data::models::meta_data::{CollectedData, MetaData};
 use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::secrets_manager::secrets_manager::SecretsManager;
 use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::task::JoinSet;
@@ -12,35 +13,6 @@ mod api;
 mod data;
 mod secrets_manager;
 mod validator;
-
-#[derive(Parser)]
-struct Args {
-    // artists to generate a setlist playlist for, separated by commas
-    #[arg(short, long)]
-    artists: String,
-
-    #[arg(short, long)]
-    // the name of the playlist to create
-    playlist_name: Option<String>,
-
-    // streaming service to use, either "spotify" or "youtube_music" currently supported
-    #[arg(short, long, value_enum)]
-    service: StreamingService,
-
-    // how many pages of setlist data to fetch from the setlist.fm API
-    #[arg(long, default_value_t = 1)]
-    page_depth: u16,
-
-    /// Store the setlist.fm API key in the system keyring and exit
-    #[arg(long)]
-    setlist_api_key: Option<String>,
-}
-
-#[derive(ValueEnum, Clone)]
-enum StreamingService {
-    Spotify,
-    YouTubeMusic,
-}
 
 #[tokio::main]
 async fn main() {
@@ -67,7 +39,7 @@ fn parse_and_validate_args() -> SanitizedArgs {
 }
 
 fn resolve_api_key(sanitized_args: &SanitizedArgs) -> String {
-    let mut secret_manager = SecretsManager::new();
+    let secret_manager = SecretsManager::new();
     secret_manager
         .set_keys_from_args(sanitized_args.secret_hashmap.clone())
         .expect("Secret configuration failed");
@@ -141,7 +113,7 @@ fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -
 fn print_results(collected_data: &CollectedData) {
     for data in &collected_data.collected_meta_data {
         println!("Artist: {}", data.artist_name);
-        print!("Average songs per setlist: {:.2}\n", data.mean_song_count);
+        println!("Average songs per setlist: {:.2}\n", data.mean_song_count);
         println!("{:#?}", data.song_stats)
     }
 }

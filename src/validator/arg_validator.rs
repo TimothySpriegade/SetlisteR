@@ -1,5 +1,5 @@
 use crate::Args;
-use crate::StreamingService;
+use crate::data::models::args::StreamingService;
 use crate::secrets_manager::secrets_manager::KeyType;
 use crate::validator::artist_validator::ArtistValidator;
 use crate::validator::playlist_name_validator::PlaylistNameValidator;

@@ -39,7 +39,7 @@ Bugs are tracked as GitHub issues. When reporting a bug, please use the provided
 Enhancement suggestions are also tracked as GitHub issues. Please use the Feature Request template if provided. Describe the feature you would like to see, why you need it, and how it should work.
 
 ### First Code Contribution
-If you are looking for a place to start, check out the issue tracker for issues labeled `good first issue` or `help wanted`. These issues are a great way to get familiar with the codebase. 
+If you are looking for a place to start, check out the issue tracker for issues labeled `good first issue` or `help wanted`. These issues are a great way to get familiar with the codebase.
 
 ### Improving Documentation
 Documentation improvements are always welcome! This includes updating the `README.md`, fixing typos, or adding comments to the codebase. Documentation pull requests follow the same process as code contributions.
@@ -54,11 +54,7 @@ To set up SetlisteR for local development, follow these steps:
    ```
 
 2. **Set up the environment:**
-   SetlisteR requires an environment file for API keys (e.g., setlist.fm). Copy the template to create your `.env` file:
-   ```sh
-   cp .env.template .env
-   ```
-   *Make sure to fill in the required keys in your new `.env` file.*
+   SetlisteR requires an API key for setlist.fm. The project now uses the `keyring` crate to securely manage secrets. You can configure your key by passing it as an argument when running the app for the first time, or by setting the `SETLIST_FM_API_KEY` environment variable. The secrets manager will store it safely in your system's native keystore (e.g., Keychain on macOS, Credential Manager on Windows, or Secret Service on Linux).
 
 3. **Build the project:**
    Make sure you have Rust installed. We recommend using `rustup`.
@@ -70,9 +66,9 @@ To set up SetlisteR for local development, follow these steps:
 Here's a brief overview of our standard Rust project layout:
 - `src/main.rs`: The main entry point parsing arguments and calling the API.
 - `src/api/`: Logic for handling API requests (like the setlist.fm client). This directory is strictly for API communication.
-- `src/validator/`: Contains modules for validating input arguments.
 - `src/data/`: Data structures and models for serialization/deserialization.
-- `src/data/models/`: New external API data models (e.g., `setlistfm_response_models.rs`) must go here.
+- `src/secrets_manager/`: Logic utilizing the `keyring` crate to securely store and retrieve API credentials natively.
+- `src/validator/`: Contains modules for validating input arguments, artists, and playlist names.
 
 ## Testing Guidelines
 We expect all code contributions to pass the existing test suite and include new tests for new functionality.
@@ -88,7 +84,7 @@ Please ensure that all tests pass locally before opening a pull request. If you 
 When adding tests to SetlisteR, please adhere to the following patterns:
 - **Unit Tests:** Place unit tests in the same file as the code they are testing, wrapped in a `#[cfg(test)]` module named `tests`. Keep tests small and focused on a single piece of functionality.
 - **Mocking:** Where appropriate, use mocks for external services like the setlist.fm API to ensure tests remain fast and deterministic without relying on network calls.
-- **Test Data (Object Mother):** Use the Object Mother pattern to create standardized, reusable test data fixtures (such as dummy arguments, API payloads, or setlists) rather than hardcoding complex data structures directly inside individual tests.
+- **Test Data (Object Mother):** You **MUST** use the Object Mother pattern to create standardized, reusable test data fixtures (such as dummy arguments, API payloads, or setlists) rather than hardcoding complex data structures directly inside individual tests.
 
 ## Pull Request Process
 1. **Fork the repository** and create your branch from `main`.

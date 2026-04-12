@@ -1,5 +1,5 @@
 use crate::Args;
-use crate::StreamingService;
+use crate::data::models::args::StreamingService;
 
 pub struct ArgsMotherObject {
     artists: String,
