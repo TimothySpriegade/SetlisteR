@@ -7,15 +7,15 @@ pub struct SetlistDataProcessor;
 
 impl SetlistDataProcessor {
     pub fn reduce_to_song_stats(setlists: &[Setlist]) -> HashMap<String, SongStats> {
-        let mut stats_map: HashMap<String, SongStats> = HashMap::new();
+        let mut song_stats_by_name: HashMap<String, SongStats> = HashMap::new();
 
-        for show in setlists {
-            Self::process_show(show, &mut stats_map);
+        for setlist in setlists {
+            Self::process_show(setlist, &mut song_stats_by_name);
         }
 
-        Self::calculate_mean_positions(&mut stats_map);
+        Self::populate_mean_positions(&mut song_stats_by_name);
 
-        stats_map
+        song_stats_by_name
     }
 
     pub fn average_songs_per_setlist(setlists: &[Setlist]) -> f32 {
@@ -30,71 +30,71 @@ impl SetlistDataProcessor {
         total_songs as f32 / setlists.len() as f32
     }
 
-    fn process_show(show: &Setlist, stats_map: &mut HashMap<String, SongStats>) {
-        let mut global_song_index = 0;
-        let event_date = show.event_date.as_str();
-        let parsed_event_date = Self::parse_event_date(event_date);
+    fn process_show(setlist: &Setlist, song_stats_by_name: &mut HashMap<String, SongStats>) {
+        let mut show_song_position = 0;
+        let event_date = setlist.event_date.as_str();
+        let show_date = Self::parse_event_date(event_date);
 
-        if show.sets.set.is_empty() {
+        if setlist.sets.set.is_empty() {
             return;
         }
 
-        for set in &show.sets.set {
+        for set in &setlist.sets.set {
             Self::process_set(
                 set,
-                &mut global_song_index,
-                stats_map,
+                &mut show_song_position,
+                song_stats_by_name,
                 event_date,
-                parsed_event_date.as_ref(),
+                show_date.as_ref(),
             );
         }
     }
 
     fn process_set(
         set: &Set,
-        global_song_index: &mut usize,
-        stats_map: &mut HashMap<String, SongStats>,
+        show_song_position: &mut usize,
+        song_stats_by_name: &mut HashMap<String, SongStats>,
         event_date: &str,
-        parsed_event_date: Option<&NaiveDate>,
+        show_date: Option<&NaiveDate>,
     ) {
         let is_encore = set.encore.is_some();
-        let num_songs_in_set = set.song.len();
+        let songs_in_set_count = set.song.len();
 
-        for (i, song) in set.song.iter().enumerate() {
+        for (song_index_in_set, song) in set.song.iter().enumerate() {
             if song.tape.unwrap_or(false) {
                 continue;
             }
 
-            *global_song_index += 1;
+            *show_song_position += 1;
 
             let song_name = Self::resolve_song_name(song);
-            let is_opener = *global_song_index == 1;
-            let is_set_closer = i == num_songs_in_set - 1;
+            let is_opener = *show_song_position == 1;
+            let is_set_closer = song_index_in_set == songs_in_set_count - 1;
 
             Self::update_song_stats(
-                stats_map,
+                song_stats_by_name,
                 song_name,
-                *global_song_index,
+                *show_song_position,
                 is_opener,
                 is_encore,
                 is_set_closer,
                 event_date,
-                parsed_event_date,
+                show_date,
             );
         }
     }
 
     fn update_song_stats(
-        stats_map: &mut HashMap<String, SongStats>,
+        song_stats_by_name: &mut HashMap<String, SongStats>,
         song_name: String,
         song_position: usize,
         is_opener: bool,
         is_encore: bool,
         is_set_closer: bool,
         event_date: &str,
-        parsed_event_date: Option<&NaiveDate>,
+        show_date: Option<&NaiveDate>,
     ) {
-        let stats = stats_map
+        let stats = song_stats_by_name
             .entry(song_name.clone())
             .or_insert_with(|| SongStats {
                 song_name: song_name.clone(),
@@ -116,7 +116,7 @@ impl SetlistDataProcessor {
             stats.closer_count += 1;
         }
 
-        if let Some(show_date) = parsed_event_date {
+        if let Some(show_date) = show_date {
             let update_last_played = match Self::parse_event_date(stats.last_played.as_str()) {
                 Some(existing_date) => *show_date > existing_date,
                 None => true,
@@ -128,10 +128,8 @@ impl SetlistDataProcessor {
         }
     }
 
-    fn calculate_mean_positions(
-        stats_map: &mut HashMap<String, SongStats>,
-    ) -> HashMap<String, SongStats> {
-        for stats in stats_map.values_mut() {
+    fn populate_mean_positions(song_stats_by_name: &mut HashMap<String, SongStats>) {
+        for stats in song_stats_by_name.values_mut() {
             if !stats.positions_played.is_empty() {
                 let total_positions: usize = stats.positions_played.iter().sum();
                 let count = stats.positions_played.len() as f32;
@@ -140,8 +138,6 @@ impl SetlistDataProcessor {
                     .push(total_positions as f32 / count);
             }
         }
-
-        stats_map.clone()
     }
 
     fn count_non_tape_songs_in_show(show: &Setlist) -> usize {

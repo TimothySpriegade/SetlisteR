@@ -27,10 +27,10 @@ mod tests {
         );
 
         // Act
-        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[show]);
+        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[show]);
 
         // Assert
-        let song_a = stats_map.get("Song A").unwrap();
+        let song_a = song_stats_by_name.get("Song A").unwrap();
         assert_eq!(song_a.total_plays, 2);
         assert_eq!(song_a.positions_played, vec![1, 3]);
         assert_eq!(song_a.opener_count, 1);
@@ -39,7 +39,7 @@ mod tests {
         assert_eq!(song_a.last_played, "21-09-2023");
         assert_eq!(song_a.mean_positions_played.last(), Some(&2.0));
 
-        let song_c = stats_map.get("Song C").unwrap();
+        let song_c = song_stats_by_name.get("Song C").unwrap();
         assert_eq!(song_c.total_plays, 1);
         assert_eq!(song_c.positions_played, vec![2]);
         assert_eq!(song_c.opener_count, 0);
@@ -64,11 +64,11 @@ mod tests {
         );
 
         // Act
-        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[show]);
+        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[show]);
 
         // Assert
-        assert!(stats_map.contains_key("Jam Session"));
-        assert!(stats_map.contains_key("Unknown Song"));
+        assert!(song_stats_by_name.contains_key("Jam Session"));
+        assert!(song_stats_by_name.contains_key("Unknown Song"));
     }
 
     #[test]
@@ -90,10 +90,10 @@ mod tests {
         );
 
         // Act
-        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[newer_show, older_show]);
+        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[newer_show, older_show]);
 
         // Assert
-        let song_a = stats_map.get("Song A").unwrap();
+        let song_a = song_stats_by_name.get("Song A").unwrap();
         assert_eq!(song_a.last_played, "21-09-2023");
     }
 
@@ -109,10 +109,10 @@ mod tests {
         );
 
         // Act
-        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[invalid_date_show]);
+        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[invalid_date_show]);
 
         // Assert
-        let song_a = stats_map.get("Song A").unwrap();
+        let song_a = song_stats_by_name.get("Song A").unwrap();
         assert_eq!(song_a.last_played, "");
     }
 
@@ -131,14 +131,14 @@ mod tests {
             )],
         );
         // Act
-        let stats_map = SetlistDataProcessor::reduce_to_song_stats(&[show]);
+        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[show]);
 
         // Assert
-        let song_a = stats_map.get("Song A").unwrap();
+        let song_a = song_stats_by_name.get("Song A").unwrap();
         assert_eq!(song_a.positions_played, vec![1, 3]);
         assert_eq!(song_a.mean_positions_played.last(), Some(&2.0));
 
-        let song_b = stats_map.get("Song B").unwrap();
+        let song_b = song_stats_by_name.get("Song B").unwrap();
         assert_eq!(song_b.positions_played, vec![2]);
         assert_eq!(song_b.mean_positions_played.last(), Some(&2.0));
     }

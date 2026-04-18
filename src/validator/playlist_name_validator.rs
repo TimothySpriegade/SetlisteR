@@ -3,7 +3,7 @@ pub struct PlaylistNameValidator {}
 impl PlaylistNameValidator {
     const MAX_PLAYLIST_NAME_LENGTH: usize = 100;
 
-    pub fn validate(args: &crate::Args, sanitized_artist: &Vec<String>) -> Result<String, String> {
+    pub fn validate(args: &crate::Args, sanitized_artists: &[String]) -> Result<String, String> {
         if let Some(playlist_name) = &args.playlist_name {
             let normalized_name = Self::normalize_whitespace(playlist_name);
 
@@ -15,7 +15,7 @@ impl PlaylistNameValidator {
 
             Ok(stripped_name)
         } else {
-            Ok(Self::generate_default_name(&sanitized_artist))
+            Ok(Self::generate_default_name(sanitized_artists))
         }
     }
 

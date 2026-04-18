@@ -1,16 +1,16 @@
 use crate::data::models::args::Args;
-use crate::data::models::meta_data::{CollectedData, MetaData};
+use crate::data::models::meta_data::{ArtistAnalysis, ArtistAnalysisCollection};
 use crate::data::models::playlist_data::PlaylistData;
 use crate::data::models::setlistfm_response::{Setlist, SetlistResponse};
-use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::data::models::args::StreamingService;
+use crate::data::setlist_data_processor::SetlistDataProcessor;
+use crate::data::setlist_data_reducer::SetlistDataReducer;
 use crate::secrets_manager::secrets_manager::SecretsManager;
 use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
 use clap::Parser;
 use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::task::JoinSet;
-use crate::data::setlist_data_reducer::SetlistDataReducer;
 
 mod api;
 mod data;
@@ -23,15 +23,18 @@ async fn main() {
     let api_key = resolve_api_key(&sanitized_args);
     let client = build_setlist_client(api_key);
 
-    let raw_data =
-        fetch_all_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
-    let collected_data = run_analysis(raw_data);
+    let artist_setlist_responses =
+        fetch_setlists_for_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
+    let artist_analysis_collection = analyze_artist_setlists(artist_setlist_responses);
 
-    let reduced_to_setlist_data =
-        SetlistDataReducer::new(sanitized_args.playlist_name, sanitized_args.service, collected_data)
-            .reduce();
+    let reduced_playlist_data = SetlistDataReducer::new(
+        sanitized_args.playlist_name,
+        sanitized_args.service,
+        artist_analysis_collection,
+    )
+    .reduce();
 
-    print_results(&reduced_to_setlist_data);
+    print_results(&reduced_playlist_data);
 }
 
 fn parse_and_validate_args() -> SanitizedArgs {
@@ -48,7 +51,7 @@ fn parse_and_validate_args() -> SanitizedArgs {
 fn resolve_api_key(sanitized_args: &SanitizedArgs) -> String {
     let secret_manager = SecretsManager::new();
     secret_manager
-        .set_keys_from_args(sanitized_args.secret_hashmap.clone())
+        .set_keys_from_args(sanitized_args.secrets_by_type.clone())
         .expect("Secret configuration failed");
     secret_manager
         .get_setlist_fm_api_key()
@@ -59,7 +62,7 @@ fn build_setlist_client(api_key: String) -> Arc<api::setlist_fm::SetlistFmClient
     Arc::new(api::setlist_fm::SetlistFmClient::new(api_key))
 }
 
-async fn fetch_all_artists(
+async fn fetch_setlists_for_artists(
     client: Arc<api::setlist_fm::SetlistFmClient>,
     artists: Vec<String>,
     page_depth: u16,
@@ -69,17 +72,17 @@ async fn fetch_all_artists(
     for artist in artists {
         let client = Arc::clone(&client);
         tasks.spawn(async move {
-            let data = client.get_setlist_by_artist(&artist, page_depth).await;
-            (artist, data)
+            let setlist_responses = client.fetch_setlists_by_artist(&artist, page_depth).await;
+            (artist, setlist_responses)
         });
     }
 
-    let mut results = Vec::new();
+    let mut artist_setlist_responses = Vec::new();
 
-    while let Some(result) = tasks.join_next().await {
-        match result {
-            Ok((artist, data)) => {
-                results.push((artist, data));
+    while let Some(join_result) = tasks.join_next().await {
+        match join_result {
+            Ok((artist, setlist_responses)) => {
+                artist_setlist_responses.push((artist, setlist_responses));
             }
             Err(err) => {
                 eprintln!("Artist task failed: {err}");
@@ -87,33 +90,35 @@ async fn fetch_all_artists(
         }
     }
 
-    results
+    artist_setlist_responses
 }
 
-fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -> CollectedData {
-    let meta_data: Vec<MetaData> = raw_data
+fn analyze_artist_setlists(
+    artist_setlist_responses: Vec<(String, Vec<Result<SetlistResponse, String>>)>,
+) -> ArtistAnalysisCollection {
+    let artist_analyses: Vec<ArtistAnalysis> = artist_setlist_responses
         .into_par_iter()
-        .map(|(artist, setlist_api_data)| {
-            let setlists_from_api: Vec<Setlist> = setlist_api_data
+        .map(|(artist, setlist_responses)| {
+            let setlists: Vec<Setlist> = setlist_responses
                 .into_iter()
-                .filter_map(|res| res.ok())
-                .flat_map(|resp| resp.setlist)
+                .filter_map(|response| response.ok())
+                .flat_map(|response| response.setlist)
                 .collect();
 
-            let mean_song_count =
-                SetlistDataProcessor::average_songs_per_setlist(&setlists_from_api);
-            let analyzed_data = SetlistDataProcessor::reduce_to_song_stats(&setlists_from_api);
+            let average_songs_per_setlist =
+                SetlistDataProcessor::average_songs_per_setlist(&setlists);
+            let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&setlists);
 
-            MetaData {
+            ArtistAnalysis {
                 artist_name: artist,
-                mean_song_count,
-                song_stats: analyzed_data,
+                average_songs_per_setlist,
+                song_stats_by_name,
             }
         })
         .collect();
 
-    CollectedData {
-        collected_meta_data: meta_data,
+    ArtistAnalysisCollection {
+        artist_analyses,
     }
 }
 
@@ -132,10 +137,10 @@ fn print_results(playlist_data: &PlaylistData) {
 
     println!();
 
-    for artist_data in &playlist_data.artist_song_data {
-        println!("Artist: {}", artist_data.artist);
+    for artist_playlist in &playlist_data.artist_playlists {
+        println!("Artist: {}", artist_playlist.artist);
 
-        for (position, song_name) in &artist_data.songs {
+        for (position, song_name) in &artist_playlist.songs_by_position {
             println!("{}. {}", position, song_name);
         }
 

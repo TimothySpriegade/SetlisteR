@@ -28,7 +28,7 @@ mod tests {
         let playlist_data = reducer.reduce();
 
         // Assert
-        let songs = &playlist_data.artist_song_data[0].songs;
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
         assert_eq!(songs.get(&1), Some(&"Song B".to_string()));
         assert_eq!(songs.get(&2), Some(&"Song C".to_string()));
         assert_eq!(songs.get(&3), Some(&"Song A".to_string()));
@@ -61,7 +61,7 @@ mod tests {
         let playlist_data = reducer.reduce();
 
         // Assert
-        let songs = &playlist_data.artist_song_data[0].songs;
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
         assert_eq!(songs.get(&1), Some(&"Opener Song".to_string()));
         assert_eq!(songs.get(&2), Some(&"Regular Song".to_string()));
         assert_eq!(songs.get(&3), Some(&"Closer Song".to_string()));
@@ -87,7 +87,7 @@ mod tests {
         let playlist_data = reducer.reduce();
 
         // Assert
-        let songs = &playlist_data.artist_song_data[0].songs;
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
         assert_eq!(songs.get(&1), Some(&"Early Regular Song".to_string()));
         assert_eq!(songs.get(&2), Some(&"Frequent Opener But Low Plays".to_string()));
     }
@@ -111,7 +111,7 @@ mod tests {
         let playlist_data = reducer.reduce();
 
         // Assert
-        let songs = &playlist_data.artist_song_data[0].songs;
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
         assert_eq!(songs.get(&1), Some(&"Higher Opener Rate".to_string()));
         assert_eq!(songs.get(&2), Some(&"Lower Opener Rate".to_string()));
     }

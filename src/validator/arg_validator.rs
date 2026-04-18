@@ -12,31 +12,31 @@ pub struct SanitizedArgs {
     pub playlist_name: String,
     pub service: StreamingService,
     pub page_depth: u16,
-    pub secret_hashmap: HashMap<KeyType, String>,
+    pub secrets_by_type: HashMap<KeyType, String>,
 }
 impl ArgValidator {
     pub fn validate(args: &Args) -> Result<SanitizedArgs, String> {
         let artists = ArtistValidator::validate(args)?;
         let playlist_name = PlaylistNameValidator::validate(args, &artists)?;
 
-        let secret_hashmap = build_secret_hashmap(args);
+        let secrets_by_type = build_secrets_by_type(args);
 
         Ok(SanitizedArgs {
             artists,
             playlist_name,
             service: args.service.clone(),
             page_depth: args.page_depth,
-            secret_hashmap: secret_hashmap,
+            secrets_by_type,
         })
     }
 }
 
-fn build_secret_hashmap(args: &Args) -> HashMap<KeyType, String> {
-    let mut secret_hashmap = HashMap::new();
+fn build_secrets_by_type(args: &Args) -> HashMap<KeyType, String> {
+    let mut secrets_by_type = HashMap::new();
 
     if let Some(setlist_api_key) = &args.setlist_api_key {
-        secret_hashmap.insert(KeyType::SetlistFmApiKey, setlist_api_key.clone());
+        secrets_by_type.insert(KeyType::SetlistFmApiKey, setlist_api_key.clone());
     }
 
-    secret_hashmap
+    secrets_by_type
 }

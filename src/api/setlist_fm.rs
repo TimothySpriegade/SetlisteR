@@ -16,16 +16,16 @@ impl SetlistFmClient {
         }
     }
 
-    pub async fn get_setlist_by_artist(
+    pub async fn fetch_setlists_by_artist(
         &self,
         artist: &str,
-        page_count: u16,
+        page_limit: u16,
     ) -> Vec<Result<SetlistResponse, String>> {
         let client = reqwest::Client::new();
         let mut page = 1;
-        let mut all_setlists: Vec<Result<SetlistResponse, String>> = Vec::new();
+        let mut setlist_responses: Vec<Result<SetlistResponse, String>> = Vec::new();
 
-        while page <= page_count {
+        while page <= page_limit {
             let request_uri = format!(
                 "https://api.setlist.fm/rest/1.0/search/setlists?artistName={}&p={}",
                 artist, page
@@ -46,17 +46,17 @@ impl SetlistFmClient {
                         .json::<SetlistResponse>()
                         .await
                         .map_err(|err| format!("Error parsing JSON: {}", err));
-                    all_setlists.push(parsed);
+                    setlist_responses.push(parsed);
                 }
                 Err(err) => {
-                    all_setlists.push(Err(format!("Error sending request: {}", err)));
+                    setlist_responses.push(Err(format!("Error sending request: {}", err)));
                 }
             }
 
             page += 1;
         }
 
-        all_setlists
+        setlist_responses
     }
 
     async fn wait_for_slot(&self) {

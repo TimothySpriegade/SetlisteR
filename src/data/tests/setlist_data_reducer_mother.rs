@@ -1,5 +1,5 @@
 use crate::data::models::args::StreamingService;
-use crate::data::models::meta_data::{CollectedData, MetaData};
+use crate::data::models::meta_data::{ArtistAnalysis, ArtistAnalysisCollection};
 use crate::data::models::song_stats::SongStats;
 use crate::data::setlist_data_reducer::SetlistDataReducer;
 use std::collections::HashMap;
@@ -7,15 +7,15 @@ use std::collections::HashMap;
 pub struct SetlistDataReducerMotherObject;
 
 impl SetlistDataReducerMotherObject {
-    pub fn reducer(song_stats: HashMap<String, SongStats>) -> SetlistDataReducer {
+    pub fn reducer(song_stats_by_name: HashMap<String, SongStats>) -> SetlistDataReducer {
         SetlistDataReducer::new(
             "My Playlist".to_string(),
             StreamingService::Spotify,
-            CollectedData {
-                collected_meta_data: vec![MetaData {
+            ArtistAnalysisCollection {
+                artist_analyses: vec![ArtistAnalysis {
                     artist_name: "Test Artist".to_string(),
-                    song_stats,
-                    mean_song_count: 0.0,
+                    song_stats_by_name,
+                    average_songs_per_setlist: 0.0,
                 }],
             },
         )

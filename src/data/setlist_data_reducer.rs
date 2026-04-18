@@ -1,6 +1,6 @@
 use crate::data::models::args::StreamingService;
-use crate::data::models::meta_data::CollectedData;
-use crate::data::models::playlist_data::{ArtistSongData, PlaylistData};
+use crate::data::models::meta_data::ArtistAnalysisCollection;
+use crate::data::models::playlist_data::{ArtistPlaylist, PlaylistData};
 use crate::data::models::song_stats::SongStats;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
@@ -16,7 +16,7 @@ enum RoleBucket {
 pub struct SetlistDataReducer {
     playlist_name: String,
     streaming_service: StreamingService,
-    collected_data: CollectedData,
+    analysis_collection: ArtistAnalysisCollection,
 }
 
 impl SetlistDataReducer {
@@ -26,12 +26,12 @@ impl SetlistDataReducer {
     pub fn new(
         playlist_name: String,
         streaming_service: StreamingService,
-        collected_data: CollectedData,
+        analysis_collection: ArtistAnalysisCollection,
     ) -> Self {
         Self {
             playlist_name,
             streaming_service,
-            collected_data,
+            analysis_collection,
         }
     }
 
@@ -39,42 +39,45 @@ impl SetlistDataReducer {
         let mut playlist_data = PlaylistData {
             playlist_name: self.playlist_name.clone(),
             platforms: vec![self.streaming_service.clone()],
-            artist_song_data: Vec::new(),
+            artist_playlists: Vec::new(),
         };
 
-        let mut artist_song_data = Vec::new();
+        let mut artist_playlists = Vec::new();
 
-        for data in &self.collected_data.collected_meta_data {
-            let artist = data.artist_name.clone();
-            let setlist_data = Self::reduce_to_playlist_data(data.song_stats.clone());
+        for artist_analysis in &self.analysis_collection.artist_analyses {
+            let artist = artist_analysis.artist_name.clone();
+            let songs_by_position =
+                Self::map_song_stats_to_playlist_slots(artist_analysis.song_stats_by_name.clone());
 
-            artist_song_data.push(ArtistSongData {
+            artist_playlists.push(ArtistPlaylist {
                 artist,
-                songs: setlist_data,
+                songs_by_position,
             });
         }
-        playlist_data.artist_song_data = artist_song_data;
+        playlist_data.artist_playlists = artist_playlists;
         playlist_data
     }
 
-    fn reduce_to_playlist_data(song_data: HashMap<String, SongStats>) -> BTreeMap<usize, String> {
-        let sorted_song_data = Self::sort_setlist_by_mean_position(song_data);
+    fn map_song_stats_to_playlist_slots(
+        song_stats_by_name: HashMap<String, SongStats>,
+    ) -> BTreeMap<usize, String> {
+        let ranked_songs = Self::rank_songs_for_setlist(song_stats_by_name);
 
-        sorted_song_data
+        ranked_songs
             .into_iter()
             .enumerate()
             .map(|(index, (song_name, _))| (index + 1, song_name))
             .collect()
     }
 
-    fn sort_setlist_by_mean_position(
-        song_data: HashMap<String, SongStats>,
+    fn rank_songs_for_setlist(
+        song_stats_by_name: HashMap<String, SongStats>,
     ) -> Vec<(String, SongStats)> {
-        let mut sorted_song_data: Vec<(String, SongStats)> = song_data.into_iter().collect();
+        let mut ranked_songs: Vec<(String, SongStats)> = song_stats_by_name.into_iter().collect();
 
-        sorted_song_data.sort_by(|(_, a), (_, b)| {
-            let a_bucket = Self::role_bucket(a);
-            let b_bucket = Self::role_bucket(b);
+        ranked_songs.sort_by(|(_, a), (_, b)| {
+            let a_bucket = Self::role_bucket_for_song(a);
+            let b_bucket = Self::role_bucket_for_song(b);
 
             a_bucket
                 .cmp(&b_bucket)
@@ -83,7 +86,7 @@ impl SetlistDataReducer {
                 .then_with(|| a.song_name.cmp(&b.song_name))
         });
 
-        sorted_song_data
+        ranked_songs
     }
 
     fn compare_within_bucket(a: &SongStats, b: &SongStats, bucket: RoleBucket) -> Ordering {
@@ -118,7 +121,7 @@ impl SetlistDataReducer {
         }
     }
 
-    fn role_bucket(stats: &SongStats) -> RoleBucket {
+    fn role_bucket_for_song(stats: &SongStats) -> RoleBucket {
         if stats.total_plays < Self::MIN_ROLE_PLAYS {
             return RoleBucket::Regular;
         }
