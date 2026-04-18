@@ -1,4 +1,4 @@
-use crate::data::models::setlistfm_response_models::{Set, Setlist, Song};
+use crate::data::models::setlistfm_response::{Set, Setlist, Song};
 use crate::data::models::song_stats::SongStats;
 use chrono::NaiveDate;
 use std::collections::HashMap;

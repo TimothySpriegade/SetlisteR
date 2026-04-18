@@ -1,13 +1,16 @@
 use crate::data::models::args::Args;
 use crate::data::models::meta_data::{CollectedData, MetaData};
-use crate::data::models::setlistfm_response_models::{Setlist, SetlistResponse};
+use crate::data::models::playlist_data::PlaylistData;
+use crate::data::models::setlistfm_response::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
+use crate::data::models::args::StreamingService;
 use crate::secrets_manager::secrets_manager::SecretsManager;
 use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
 use clap::Parser;
 use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::task::JoinSet;
+use crate::data::setlist_data_reducer::SetlistDataReducer;
 
 mod api;
 mod data;
@@ -24,7 +27,11 @@ async fn main() {
         fetch_all_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
     let collected_data = run_analysis(raw_data);
 
-    print_results(&collected_data);
+    let reduced_to_setlist_data =
+        SetlistDataReducer::new(sanitized_args.playlist_name, sanitized_args.service, collected_data)
+            .reduce();
+
+    print_results(&reduced_to_setlist_data);
 }
 
 fn parse_and_validate_args() -> SanitizedArgs {
@@ -110,10 +117,35 @@ fn run_analysis(raw_data: Vec<(String, Vec<Result<SetlistResponse, String>>)>) -
     }
 }
 
-fn print_results(collected_data: &CollectedData) {
-    for data in &collected_data.collected_meta_data {
-        println!("Artist: {}", data.artist_name);
-        println!("Average songs per setlist: {:.2}\n", data.mean_song_count);
-        println!("{:#?}", data.song_stats)
+fn print_results(playlist_data: &PlaylistData) {
+    println!("Playlist: {}", playlist_data.playlist_name);
+
+    if !playlist_data.platforms.is_empty() {
+        let platforms = playlist_data
+            .platforms
+            .iter()
+            .map(streaming_service_name)
+            .collect::<Vec<&str>>()
+            .join(", ");
+        println!("Platforms: {}", platforms);
+    }
+
+    println!();
+
+    for artist_data in &playlist_data.artist_song_data {
+        println!("Artist: {}", artist_data.artist);
+
+        for (position, song_name) in &artist_data.songs {
+            println!("{}. {}", position, song_name);
+        }
+
+        println!();
+    }
+}
+
+fn streaming_service_name(service: &StreamingService) -> &'static str {
+    match service {
+        StreamingService::Spotify => "Spotify",
+        StreamingService::YouTubeMusic => "YouTube Music",
     }
 }

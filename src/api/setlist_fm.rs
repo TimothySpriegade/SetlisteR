@@ -1,4 +1,4 @@
-use crate::data::models::setlistfm_response_models::SetlistResponse;
+use crate::data::models::setlistfm_response::SetlistResponse;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;

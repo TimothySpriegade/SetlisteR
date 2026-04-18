@@ -1,4 +1,4 @@
-use crate::data::models::setlistfm_response_models::{
+use crate::data::models::setlistfm_response::{
     Artist, City, Coords, Country, Set, Setlist, Sets, Song, Venue,
 };
 

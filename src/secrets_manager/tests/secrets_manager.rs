@@ -1,4 +1,4 @@
-use crate::secrets_manager::secrets_manager::{SecretsManager};
+use crate::secrets_manager::secrets_manager::SecretsManager;
 use std::collections::HashMap;
 
 #[cfg(test)]
