@@ -1,81 +1,109 @@
 # SetlisteR
-> SetlisteR is a Rust-based command-line tool that generates playlists based on artist setlists. By connecting to the setlist.fm API, it fetches recent setlist data for specified artists and can target different streaming services for playlist creation.
+> SetlisteR is a Rust command-line application that fetches artist setlists from setlist.fm and produces a ranked, setlist-shaped song list per artist.
 
 ## Features
-- Fetch setlist data from setlist.fm for multiple artists.
-- Selectable streaming service support (currently supports Spotify and YouTube Music).
-- Configurable pagination depth to fetch more extensive setlist histories.
-- Environment variable-based configuration and system keyring support for secure API key management.
+- Fetches setlists from the setlist.fm REST API for one or more artists.
+- Supports configurable pagination via `--page-depth`.
+- Uses concurrent artist fetches while respecting a global request pace (`Duration::from_millis(500)`, approximately 2 requests/second).
+- Computes per-song statistics including total plays, opener/closer/encore counts, average position, and last played date.
+- Builds output playlists using role-aware ranking (opener/regular/closer/encore) and average setlist length.
+- Supports secure API key storage in system keyring plus environment-variable fallback.
+- Prints generated playlist output (playlist name, selected platform, and songs by position) to stdout.
 
 ## Prerequisites
-- **Rust**: Version 1.70 or higher (or a recent stable version supporting edition 2024).
-- **Cargo**: Rust's package manager and build system.
-- A valid [setlist.fm API key](https://api.setlist.fm/docs/1.0/index.html).
+- Rust toolchain that supports edition `2024`.
+- Cargo.
+- A valid setlist.fm API key.
+- Optional but recommended: a working OS keyring backend (macOS Keychain, Windows Credential Manager, or Linux Secret Service-compatible backend).
 
 ## Installation
-1. Clone the repository to your local machine:
+1. Clone the repository:
    ```bash
    git clone <repository-url>
    cd SetlisteR
    ```
-2. Build the project using Cargo:
+2. Build the project:
    ```bash
    cargo build --release
    ```
+3. (Optional) Run tests:
+   ```bash
+   cargo test
+   ```
 
 ## Configuration
-SetlisteR requires a setlist.fm API key to function. You can configure this key securely in your system keyring or via an environment variable.
+SetlisteR resolves the setlist.fm key in this order:
+1. Keyring entry
+2. Environment variable fallback (`SETLIST_FM_API_KEY`)
 
-### System Keyring (Recommended)
-You can store your API key securely in your operating system's native keyring (Keychain on macOS, Credential Manager on Windows, Secret Service on Linux) by running:
+### Store API key in keyring
+Run once with `--setlist-api-key`:
+
 ```bash
-cargo run -- --artists "Artist" --service spotify --setlist-api-key "<your super private setlist.fm API key here>"
+cargo run -- --artists "Radiohead" --service spotify --setlist-api-key "<YOUR_SETLIST_FM_API_KEY>"
 ```
-Once stored, SetlisteR will automatically retrieve it for future runs. This means you technically only need to set the API key once, and subsequent commands do not need to include the `--setlist-api-key` flag.
 
-### Environment Variable
-Alternatively, you can provide the API key via the `SETLIST_FM_API_KEY` system environment variable. This is useful for CI/CD environments or if you prefer not to use the system keyring.
+The key is stored under:
+- service: `SetlisteR`
+- user: `setlist_fm_api_key`
 
-For example, in a Unix-like shell:
+### Use environment variable fallback
+If keyring is unavailable (or empty), export:
+
 ```bash
-export SETLIST_FM_API_KEY="<your super private setlist.fm API key here>"
-cargo run -- --artists "Radiohead" --service spotify
+export SETLIST_FM_API_KEY="<YOUR_SETLIST_FM_API_KEY>"
 ```
 
 ## Usage
 
 ### Arguments
-SetlisteR accepts the following command-line arguments:
+`cargo run -- --help` currently reports:
 
-- `-a, --artists <ARTISTS>`: Artists to generate a setlist playlist for, separated by commas.
-- `-p, --playlist-name <PLAYLIST_NAME>`: The name of the playlist to create (optional).
-- `-s, --service <SERVICE>`: Streaming service to use. Accepted values: `spotify`, `youtube_music`.
-- `--page-depth <PAGE_DEPTH>`: How many pages of setlist data to fetch from the setlist.fm API. Defaults to `1`.
-- `--setlist-api-key <SETLIST_API_KEY>`: Store the setlist.fm API key in the system keyring.
+```text
+Usage: SetlisteR [OPTIONS] --artists <ARTISTS> --service <SERVICE>
+
+Options:
+  -a, --artists <ARTISTS>
+  -p, --playlist-name <PLAYLIST_NAME>
+  -s, --service <SERVICE>                  [possible values: spotify, you-tube-music]
+      --page-depth <PAGE_DEPTH>            [default: 1]
+      --setlist-api-key <SETLIST_API_KEY>  Store the setlist.fm API key in the system keyring
+  -h, --help                               Print help
+```
+
+Additional validation behavior:
+- `--artists` accepts a comma-separated list; duplicates are removed.
+- Maximum artists: `10`.
+- Maximum artist name length: `100` characters.
+- `--playlist-name` max length: `100` characters; if omitted, a name is generated automatically.
 
 ### Examples
-Fetch setlist data for a single artist and target Spotify:
+Store your API key in keyring on first run:
+
+```bash
+cargo run -- --artists "Radiohead" --service spotify --setlist-api-key "<YOUR_SETLIST_FM_API_KEY>"
+```
+
+Generate output for one artist:
+
 ```bash
 cargo run -- --artists "Radiohead" --service spotify
 ```
 
-Fetch setlist data for multiple artists, checking 3 pages deep, and target YouTube Music:
+Generate output for multiple artists and fetch deeper history:
+
 ```bash
-cargo run -- --artists "Radiohead, Muse" --service youtube_music --page-depth 3
+cargo run -- --artists "Radiohead, Muse" --service you-tube-music --page-depth 3
 ```
 
-Store your API key in the system keyring while fetching an artist (you only need to provide the flag once):
-```bash
-cargo run -- --artists "Radiohead" --service spotify --setlist-api-key "<YOUR_API_KEY>"
-```
+Use a custom playlist name:
 
-Then, you can run subsequent commands without needing the API key flag:
 ```bash
-cargo run -- --artists "Radiohead" --service spotify
+cargo run -- --artists "The National" --service spotify --playlist-name "Late Night Set"
 ```
 
 ## Contributing
-We welcome contributions to SetlisteR! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for more details on how to get started, our development workflow, and testing instructions.
+Please read the contribution guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 This project is licensed under the terms described in the [License](./LICENSE).

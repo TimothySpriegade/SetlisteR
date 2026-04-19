@@ -54,12 +54,24 @@ To set up SetlisteR for local development, follow these steps:
    ```
 
 2. **Set up the environment:**
-   SetlisteR requires an API key for setlist.fm. The project now uses the `keyring` crate to securely manage secrets. You can configure your key by passing it as an argument when running the app for the first time, or by setting the `SETLIST_FM_API_KEY` environment variable. The secrets manager will store it safely in your system's native keystore (e.g., Keychain on macOS, Credential Manager on Windows, or Secret Service on Linux).
+   SetlisteR requires a setlist.fm API key. Secrets are resolved in this order:
+   1. System keyring entry (service: `SetlisteR`, user: `setlist_fm_api_key`)
+   2. Environment variable fallback: `SETLIST_FM_API_KEY`
+
+   Store the key in keyring on first run:
+   ```sh
+   cargo run -- --artists "Radiohead" --service spotify --setlist-api-key "<YOUR_SETLIST_FM_API_KEY>"
+   ```
+
+   Or export the fallback env var:
+   ```sh
+   export SETLIST_FM_API_KEY="<YOUR_SETLIST_FM_API_KEY>"
+   ```
 
 3. **Build the project:**
-   Make sure you have Rust installed. We recommend using `rustup`.
+   Make sure you have Rust installed (edition `2024` is required; see `Cargo.toml`). We recommend using `rustup`.
    ```sh
-   cargo build
+   cargo build --release
    ```
 
 ## Project Structure
@@ -88,7 +100,7 @@ When adding tests to SetlisteR, please adhere to the following patterns:
 
 ## Pull Request Process
 1. **Fork the repository** and create your branch from `main`.
-2. **Commit your changes** with clear, descriptive commit messages.
+2. **Commit your changes** with clear, descriptive commit messages (no enforced commit-message convention is currently configured in the repository).
 3. **Ensure tests and linting pass** locally (see Testing Guidelines and Styleguides).
 4. **Open a Pull Request** describing your changes, referencing any related issues.
 5. **Review:** A maintainer will review your PR. You may be asked to make changes before it can be merged.
