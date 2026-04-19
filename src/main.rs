@@ -27,14 +27,26 @@ async fn main() {
         fetch_setlists_for_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
     let artist_analysis_collection = analyze_artist_setlists(artist_setlist_responses);
 
-    let reduced_playlist_data = SetlistDataReducer::new(
+    let reduced_playlist_data = reduce_playlist_data(
         sanitized_args.playlist_name,
         sanitized_args.service,
         artist_analysis_collection,
     )
-    .reduce();
+    .await;
 
     print_results(&reduced_playlist_data);
+}
+
+async fn reduce_playlist_data(
+    playlist_name: String,
+    service: StreamingService,
+    artist_analysis_collection: ArtistAnalysisCollection,
+) -> PlaylistData {
+    tokio::task::spawn_blocking(move || {
+        SetlistDataReducer::new(playlist_name, service, artist_analysis_collection).reduce()
+    })
+    .await
+    .expect("Playlist reducer task failed")
 }
 
 fn parse_and_validate_args() -> SanitizedArgs {

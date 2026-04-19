@@ -2,6 +2,7 @@ use crate::data::models::args::StreamingService;
 use crate::data::models::meta_data::ArtistAnalysisCollection;
 use crate::data::models::playlist_data::{ArtistPlaylist, PlaylistData};
 use crate::data::models::song_stats::SongStats;
+use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap};
 
@@ -37,28 +38,29 @@ impl SetlistDataReducer {
     }
 
     pub fn reduce(&self) -> PlaylistData {
-        let mut playlist_data = PlaylistData {
+        let artist_playlists: Vec<ArtistPlaylist> = self
+            .analysis_collection
+            .artist_analyses
+            .par_iter()
+            .map(|artist_analysis| {
+                let artist = artist_analysis.artist_name.clone();
+                let songs_by_position = Self::map_song_stats_to_playlist_slots(
+                    artist_analysis.song_stats_by_name.clone(),
+                    artist_analysis.average_songs_per_setlist,
+                );
+
+                ArtistPlaylist {
+                    artist,
+                    songs_by_position,
+                }
+            })
+            .collect();
+
+        PlaylistData {
             playlist_name: self.playlist_name.clone(),
             platforms: vec![self.streaming_service.clone()],
-            artist_playlists: Vec::new(),
-        };
-
-        let mut artist_playlists = Vec::new();
-
-        for artist_analysis in &self.analysis_collection.artist_analyses {
-            let artist = artist_analysis.artist_name.clone();
-            let songs_by_position = Self::map_song_stats_to_playlist_slots(
-                artist_analysis.song_stats_by_name.clone(),
-                artist_analysis.average_songs_per_setlist,
-            );
-
-            artist_playlists.push(ArtistPlaylist {
-                artist,
-                songs_by_position,
-            });
+            artist_playlists,
         }
-        playlist_data.artist_playlists = artist_playlists;
-        playlist_data
     }
 
     fn map_song_stats_to_playlist_slots(
