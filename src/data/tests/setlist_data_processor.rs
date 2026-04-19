@@ -90,7 +90,8 @@ mod tests {
         );
 
         // Act
-        let song_stats_by_name = SetlistDataProcessor::reduce_to_song_stats(&[newer_show, older_show]);
+        let song_stats_by_name =
+            SetlistDataProcessor::reduce_to_song_stats(&[newer_show, older_show]);
 
         // Assert
         let song_a = song_stats_by_name.get("Song A").unwrap();

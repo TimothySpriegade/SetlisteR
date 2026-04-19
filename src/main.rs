@@ -1,8 +1,8 @@
 use crate::data::models::args::Args;
+use crate::data::models::args::StreamingService;
 use crate::data::models::meta_data::{ArtistAnalysis, ArtistAnalysisCollection};
 use crate::data::models::playlist_data::PlaylistData;
 use crate::data::models::setlistfm_response::{Setlist, SetlistResponse};
-use crate::data::models::args::StreamingService;
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::data::setlist_data_reducer::SetlistDataReducer;
 use crate::secrets_manager::secrets_manager::SecretsManager;
@@ -117,9 +117,7 @@ fn analyze_artist_setlists(
         })
         .collect();
 
-    ArtistAnalysisCollection {
-        artist_analyses,
-    }
+    ArtistAnalysisCollection { artist_analyses }
 }
 
 fn print_results(playlist_data: &PlaylistData) {

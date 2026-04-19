@@ -22,6 +22,7 @@ pub struct SetlistDataReducer {
 impl SetlistDataReducer {
     const MIN_ROLE_PLAYS: u32 = 3;
     const EXCEPTIONAL_ROLE_RATE: f32 = 0.60;
+    const TARGET_SETLIST_SIZE_OFFSET: usize = 3; // This Algorithm tends to underestimate the number of songs due to smaller Festival Setlists and smaller Shows so we add this here to increase the number of songs selected for the playlist
 
     pub fn new(
         playlist_name: String,
@@ -46,8 +47,10 @@ impl SetlistDataReducer {
 
         for artist_analysis in &self.analysis_collection.artist_analyses {
             let artist = artist_analysis.artist_name.clone();
-            let songs_by_position =
-                Self::map_song_stats_to_playlist_slots(artist_analysis.song_stats_by_name.clone());
+            let songs_by_position = Self::map_song_stats_to_playlist_slots(
+                artist_analysis.song_stats_by_name.clone(),
+                artist_analysis.average_songs_per_setlist,
+            );
 
             artist_playlists.push(ArtistPlaylist {
                 artist,
@@ -60,8 +63,12 @@ impl SetlistDataReducer {
 
     fn map_song_stats_to_playlist_slots(
         song_stats_by_name: HashMap<String, SongStats>,
+        average_songs_per_setlist: f32,
     ) -> BTreeMap<usize, String> {
-        let ranked_songs = Self::rank_songs_for_setlist(song_stats_by_name);
+        let target_setlist_size = Self::target_setlist_size(average_songs_per_setlist);
+        let selected_song_stats =
+            Self::select_most_played_songs(song_stats_by_name, target_setlist_size);
+        let ranked_songs = Self::rank_songs_for_setlist(selected_song_stats);
 
         ranked_songs
             .into_iter()
@@ -70,23 +77,69 @@ impl SetlistDataReducer {
             .collect()
     }
 
+    fn target_setlist_size(average_songs_per_setlist: f32) -> usize {
+        let rounded_up_setlist_size = Self::rounded_up_setlist_size(average_songs_per_setlist);
+
+        if rounded_up_setlist_size == 0 {
+            0
+        } else {
+            rounded_up_setlist_size + Self::TARGET_SETLIST_SIZE_OFFSET
+        }
+    }
+
+    fn select_most_played_songs(
+        song_stats_by_name: HashMap<String, SongStats>,
+        target_setlist_size: usize,
+    ) -> HashMap<String, SongStats> {
+        if target_setlist_size == 0 {
+            return HashMap::new();
+        }
+
+        let mut songs_sorted_by_plays: Vec<(String, SongStats)> =
+            song_stats_by_name.into_iter().collect();
+
+        songs_sorted_by_plays.sort_by(|(_, a), (_, b)| {
+            b.total_plays
+                .cmp(&a.total_plays)
+                .then_with(|| Self::compare_for_setlist_order(a, b))
+                .then_with(|| a.song_name.cmp(&b.song_name))
+        });
+
+        songs_sorted_by_plays
+            .into_iter()
+            .take(target_setlist_size)
+            .collect()
+    }
+
+    fn rounded_up_setlist_size(average_songs_per_setlist: f32) -> usize {
+        if average_songs_per_setlist.is_finite() && average_songs_per_setlist > 0.0 {
+            average_songs_per_setlist.ceil() as usize
+        } else {
+            0
+        }
+    }
+
     fn rank_songs_for_setlist(
         song_stats_by_name: HashMap<String, SongStats>,
     ) -> Vec<(String, SongStats)> {
         let mut ranked_songs: Vec<(String, SongStats)> = song_stats_by_name.into_iter().collect();
 
         ranked_songs.sort_by(|(_, a), (_, b)| {
-            let a_bucket = Self::role_bucket_for_song(a);
-            let b_bucket = Self::role_bucket_for_song(b);
-
-            a_bucket
-                .cmp(&b_bucket)
-                .then_with(|| Self::compare_within_bucket(a, b, a_bucket))
+            Self::compare_for_setlist_order(a, b)
                 .then_with(|| b.total_plays.cmp(&a.total_plays))
                 .then_with(|| a.song_name.cmp(&b.song_name))
         });
 
         ranked_songs
+    }
+
+    fn compare_for_setlist_order(a: &SongStats, b: &SongStats) -> Ordering {
+        let a_bucket = Self::role_bucket_for_song(a);
+        let b_bucket = Self::role_bucket_for_song(b);
+
+        a_bucket
+            .cmp(&b_bucket)
+            .then_with(|| Self::compare_within_bucket(a, b, a_bucket))
     }
 
     fn compare_within_bucket(a: &SongStats, b: &SongStats, bucket: RoleBucket) -> Ordering {

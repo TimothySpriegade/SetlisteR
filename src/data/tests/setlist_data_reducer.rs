@@ -74,7 +74,14 @@ mod tests {
         let mut song_stats = HashMap::new();
         song_stats.insert(
             "Frequent Opener But Low Plays".to_string(),
-            SetlistDataReducerMotherObject::song_stats("Frequent Opener But Low Plays", 2, 2, 0, 0, 5.0),
+            SetlistDataReducerMotherObject::song_stats(
+                "Frequent Opener But Low Plays",
+                2,
+                2,
+                0,
+                0,
+                5.0,
+            ),
         );
         song_stats.insert(
             "Early Regular Song".to_string(),
@@ -89,7 +96,10 @@ mod tests {
         // Assert
         let songs = &playlist_data.artist_playlists[0].songs_by_position;
         assert_eq!(songs.get(&1), Some(&"Early Regular Song".to_string()));
-        assert_eq!(songs.get(&2), Some(&"Frequent Opener But Low Plays".to_string()));
+        assert_eq!(
+            songs.get(&2),
+            Some(&"Frequent Opener But Low Plays".to_string())
+        );
     }
 
     #[test]
@@ -116,4 +126,241 @@ mod tests {
         assert_eq!(songs.get(&2), Some(&"Lower Opener Rate".to_string()));
     }
 
+    #[test]
+    fn test_reduce_limits_playlist_length_to_rounded_up_average_setlist_size() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        song_stats.insert(
+            "Song B".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song B", 10, 0, 0, 0, 2.0),
+        );
+        song_stats.insert(
+            "Song C".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song C", 10, 0, 0, 0, 3.0),
+        );
+
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, 2.1);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 3);
+        assert_eq!(songs.get(&1), Some(&"Song A".to_string()));
+        assert_eq!(songs.get(&2), Some(&"Song B".to_string()));
+        assert_eq!(songs.get(&3), Some(&"Song C".to_string()));
+    }
+
+    #[test]
+    fn test_reduce_applies_offset_to_positive_average_setlist_size() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 70, 0, 0, 0, 1.0),
+        );
+        song_stats.insert(
+            "Song B".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song B", 60, 0, 0, 0, 2.0),
+        );
+        song_stats.insert(
+            "Song C".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song C", 50, 0, 0, 0, 3.0),
+        );
+        song_stats.insert(
+            "Song D".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song D", 40, 0, 0, 0, 4.0),
+        );
+        song_stats.insert(
+            "Song E".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song E", 30, 0, 0, 0, 5.0),
+        );
+        song_stats.insert(
+            "Song F".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song F", 20, 0, 0, 0, 6.0),
+        );
+        song_stats.insert(
+            "Song G".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song G", 10, 0, 0, 0, 7.0),
+        );
+
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, 2.1);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 6);
+        assert_eq!(songs.get(&1), Some(&"Song A".to_string()));
+        assert_eq!(songs.get(&2), Some(&"Song B".to_string()));
+        assert_eq!(songs.get(&3), Some(&"Song C".to_string()));
+        assert_eq!(songs.get(&4), Some(&"Song D".to_string()));
+        assert_eq!(songs.get(&5), Some(&"Song E".to_string()));
+        assert_eq!(songs.get(&6), Some(&"Song F".to_string()));
+        assert!(songs.values().all(|song| song != "Song G"));
+    }
+
+    #[test]
+    fn test_reduce_limits_playlist_length_when_average_is_lower_than_song_count() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        song_stats.insert(
+            "Song B".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song B", 10, 0, 0, 0, 2.0),
+        );
+        song_stats.insert(
+            "Song C".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song C", 10, 0, 0, 0, 3.0),
+        );
+
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, 1.2);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 3);
+        assert_eq!(songs.get(&1), Some(&"Song A".to_string()));
+        assert_eq!(songs.get(&2), Some(&"Song B".to_string()));
+        assert_eq!(songs.get(&3), Some(&"Song C".to_string()));
+    }
+
+    #[test]
+    fn test_reduce_selects_most_played_songs_before_position_ordering() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Least Played Early Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Least Played Early Song", 1, 0, 0, 0, 1.0),
+        );
+        song_stats.insert(
+            "Most Played Later Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Most Played Later Song", 100, 0, 0, 0, 3.0),
+        );
+        song_stats.insert(
+            "Second Most Played Mid Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats(
+                "Second Most Played Mid Song",
+                90,
+                0,
+                0,
+                0,
+                2.0,
+            ),
+        );
+        song_stats.insert(
+            "Third Most Played Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Third Most Played Song", 80, 0, 0, 0, 1.5),
+        );
+        song_stats.insert(
+            "Fourth Most Played Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Fourth Most Played Song", 70, 0, 0, 0, 2.5),
+        );
+        song_stats.insert(
+            "Fifth Most Played Song".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Fifth Most Played Song", 60, 0, 0, 0, 4.0),
+        );
+
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, 1.0);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 4);
+        assert_eq!(songs.get(&1), Some(&"Third Most Played Song".to_string()));
+        assert_eq!(
+            songs.get(&2),
+            Some(&"Second Most Played Mid Song".to_string())
+        );
+        assert_eq!(songs.get(&3), Some(&"Fourth Most Played Song".to_string()));
+        assert_eq!(songs.get(&4), Some(&"Most Played Later Song".to_string()));
+        assert!(songs.values().all(|song| song != "Least Played Early Song"));
+        assert!(songs.values().all(|song| song != "Fifth Most Played Song"));
+    }
+
+    #[test]
+    fn test_reduce_returns_empty_playlist_when_average_setlist_size_is_zero() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, 0.0);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 0);
+    }
+
+    #[test]
+    fn test_reduce_returns_empty_playlist_when_average_setlist_size_is_negative() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, -1.0);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 0);
+    }
+
+    #[test]
+    fn test_reduce_returns_empty_playlist_when_average_setlist_size_is_nan() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        let reducer = SetlistDataReducerMotherObject::reducer_with_average(song_stats, f32::NAN);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 0);
+    }
+
+    #[test]
+    fn test_reduce_returns_empty_playlist_when_average_setlist_size_is_infinite() {
+        // Arrange
+        let mut song_stats = HashMap::new();
+        song_stats.insert(
+            "Song A".to_string(),
+            SetlistDataReducerMotherObject::song_stats("Song A", 10, 0, 0, 0, 1.0),
+        );
+        let reducer =
+            SetlistDataReducerMotherObject::reducer_with_average(song_stats, f32::INFINITY);
+
+        // Act
+        let playlist_data = reducer.reduce();
+
+        // Assert
+        let songs = &playlist_data.artist_playlists[0].songs_by_position;
+        assert_eq!(songs.len(), 0);
+    }
 }

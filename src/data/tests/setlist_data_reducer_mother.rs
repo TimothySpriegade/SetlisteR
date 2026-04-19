@@ -8,6 +8,14 @@ pub struct SetlistDataReducerMotherObject;
 
 impl SetlistDataReducerMotherObject {
     pub fn reducer(song_stats_by_name: HashMap<String, SongStats>) -> SetlistDataReducer {
+        let average_songs_per_setlist = song_stats_by_name.len() as f32;
+        Self::reducer_with_average(song_stats_by_name, average_songs_per_setlist)
+    }
+
+    pub fn reducer_with_average(
+        song_stats_by_name: HashMap<String, SongStats>,
+        average_songs_per_setlist: f32,
+    ) -> SetlistDataReducer {
         SetlistDataReducer::new(
             "My Playlist".to_string(),
             StreamingService::Spotify,
@@ -15,7 +23,7 @@ impl SetlistDataReducerMotherObject {
                 artist_analyses: vec![ArtistAnalysis {
                     artist_name: "Test Artist".to_string(),
                     song_stats_by_name,
-                    average_songs_per_setlist: 0.0,
+                    average_songs_per_setlist,
                 }],
             },
         )
