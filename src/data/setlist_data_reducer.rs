@@ -18,6 +18,7 @@ pub struct SetlistDataReducer {
     playlist_name: String,
     streaming_service: StreamingService,
     analysis_collection: ArtistAnalysisCollection,
+    simple_mode_flag: bool,
 }
 
 impl SetlistDataReducer {
@@ -29,17 +30,47 @@ impl SetlistDataReducer {
         playlist_name: String,
         streaming_service: StreamingService,
         analysis_collection: ArtistAnalysisCollection,
+        simple_mode_flag: bool,
     ) -> Self {
         Self {
             playlist_name,
             streaming_service,
             analysis_collection,
+            simple_mode_flag,
         }
     }
 
     pub fn reduce(&self) -> PlaylistData {
-        let artist_playlists: Vec<ArtistPlaylist> = self
-            .analysis_collection
+        let artist_playlists = match self.simple_mode_flag {
+            true => self.invoke_simple_mode_reduction(),
+            false => self.invoke_normal_mode_reduction(),
+        };
+
+        PlaylistData {
+            playlist_name: self.playlist_name.clone(),
+            platforms: vec![self.streaming_service.clone()],
+            artist_playlists,
+        }
+    }
+
+    fn invoke_simple_mode_reduction(&self) -> Vec<ArtistPlaylist> {
+        self.analysis_collection
+            .artist_analyses
+            .par_iter()
+            .map(|artist_analysis| {
+                let artist = artist_analysis.artist_name.clone();
+                let songs_by_position = Self::map_song_stats_to_playlist_slots();
+
+                ArtistPlaylist {
+                    artist,
+                    songs_by_position,
+                }
+            })
+            .collect()
+    }
+
+    fn invoke_normal_mode_reduction(&self) -> Vec<ArtistPlaylist> {
+        self.analysis_collection
             .artist_analyses
             .par_iter()
             .map(|artist_analysis| {
@@ -54,13 +85,7 @@ impl SetlistDataReducer {
                     songs_by_position,
                 }
             })
-            .collect();
-
-        PlaylistData {
-            playlist_name: self.playlist_name.clone(),
-            platforms: vec![self.streaming_service.clone()],
-            artist_playlists,
-        }
+            .collect()
     }
 
     fn map_song_stats_to_playlist_slots(

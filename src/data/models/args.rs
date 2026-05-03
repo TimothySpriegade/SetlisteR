@@ -21,6 +21,10 @@ pub struct Args {
     /// Store the setlist.fm API key in the system keyring
     #[arg(long)]
     pub(crate) setlist_api_key: Option<String>,
+
+    // Flag for using simple mode, which generates a playlist of the most recent concert with the longest setlist
+    #[arg(short, long)]
+    pub(crate) simple_mode: Option<bool>,
 }
 
 #[derive(ValueEnum, Clone)]

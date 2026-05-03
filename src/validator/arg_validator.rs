@@ -13,20 +13,24 @@ pub struct SanitizedArgs {
     pub service: StreamingService,
     pub page_depth: u16,
     pub secrets_by_type: HashMap<KeyType, String>,
+    pub simple_mode: bool,
 }
 impl ArgValidator {
     pub fn validate(args: &Args) -> Result<SanitizedArgs, String> {
         let artists = ArtistValidator::validate(args)?;
         let playlist_name = PlaylistNameValidator::validate(args, &artists)?;
-
         let secrets_by_type = build_secrets_by_type(args);
+
+        let simple_mode = args.simple_mode.unwrap_or(false);
+        let page_depth = if simple_mode { 1 } else { args.page_depth };
 
         Ok(SanitizedArgs {
             artists,
             playlist_name,
             service: args.service.clone(),
-            page_depth: args.page_depth,
+            page_depth,
             secrets_by_type,
+            simple_mode,
         })
     }
 }

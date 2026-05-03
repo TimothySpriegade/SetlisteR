@@ -1,3 +1,4 @@
+use crate::api::setlist_fm::SetlistFmClient;
 use crate::data::models::args::Args;
 use crate::data::models::args::StreamingService;
 use crate::data::models::meta_data::{ArtistAnalysis, ArtistAnalysisCollection};
@@ -31,6 +32,7 @@ async fn main() {
         sanitized_args.playlist_name,
         sanitized_args.service,
         artist_analysis_collection,
+        sanitized_args.simple_mode,
     )
     .await;
 
@@ -41,9 +43,16 @@ async fn reduce_playlist_data(
     playlist_name: String,
     service: StreamingService,
     artist_analysis_collection: ArtistAnalysisCollection,
+    simple_mode_flag: bool,
 ) -> PlaylistData {
     tokio::task::spawn_blocking(move || {
-        SetlistDataReducer::new(playlist_name, service, artist_analysis_collection).reduce()
+        SetlistDataReducer::new(
+            playlist_name,
+            service,
+            artist_analysis_collection,
+            simple_mode_flag,
+        )
+        .reduce()
     })
     .await
     .expect("Playlist reducer task failed")
