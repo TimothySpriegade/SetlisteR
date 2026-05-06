@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::env;
+use std::sync::Once;
+
+static INIT: Once = Once::new();
 
 pub struct SecretsManager;
 
@@ -14,6 +17,35 @@ const SETLIST_FM_API_KEY_ENV_VAR: &str = "SETLIST_FM_API_KEY";
 
 impl SecretsManager {
     pub fn new() -> SecretsManager {
+        INIT.call_once(|| {
+            #[cfg(test)]
+            {
+                if let Ok(store) = keyring_core::mock::Store::new() {
+                    keyring_core::set_default_store(store);
+                }
+            }
+            #[cfg(not(test))]
+            {
+                #[cfg(target_os = "macos")]
+                {
+                    if let Ok(store) = apple_native_keyring_store::Store::new() {
+                        keyring_core::set_default_store(store);
+                    }
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(store) = windows_native_keyring_store::Store::new() {
+                        keyring_core::set_default_store(store);
+                    }
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    if let Ok(store) = dbus_secret_service_keyring_store::Store::new() {
+                        keyring_core::set_default_store(store);
+                    }
+                }
+            }
+        });
         SecretsManager
     }
 
@@ -36,7 +68,7 @@ impl SecretsManager {
     }
 
     fn set_keyring_secret(keyring_service: &str, keyring_user: &str, key: String) {
-        match keyring::Entry::new(keyring_service, keyring_user) {
+        match keyring_core::Entry::new(keyring_service, keyring_user) {
             Ok(entry) => match entry.set_password(&key) {
                 Ok(_) => println!("Secret successfully configured for service {keyring_service}"),
                 Err(e) => eprintln!("[keyring] set_password failed: {e}"),
@@ -46,7 +78,7 @@ impl SecretsManager {
     }
 
     fn get_keyring_secret(keyring_service: &str, keyring_user: &str) -> Option<String> {
-        match keyring::Entry::new(keyring_service, keyring_user) {
+        match keyring_core::Entry::new(keyring_service, keyring_user) {
             Ok(entry) => match entry.get_password() {
                 Ok(key) => Some(key),
                 Err(e) => {

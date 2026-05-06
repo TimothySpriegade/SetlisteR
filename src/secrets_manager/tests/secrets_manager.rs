@@ -61,4 +61,25 @@ mod tests {
         // Assert
         assert!(result.is_ok());
     }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_set_and_get_keyring_secret() {
+        // Arrange
+        unsafe { std::env::remove_var("SETLIST_FM_API_KEY") };
+        let manager = SecretsManager::new();
+        let mut keys = HashMap::new();
+        keys.insert(
+            crate::secrets_manager::secrets_manager::KeyType::SetlistFmApiKey,
+            "test-api-key-from-keyring".to_string(),
+        );
+
+        // Act
+        let set_result = manager.set_keys_from_args(keys);
+        let get_result = manager.get_setlist_fm_api_key();
+
+        // Assert
+        assert!(set_result.is_ok());
+        assert_eq!(get_result, Some("test-api-key-from-keyring".to_string()));
+    }
 }
