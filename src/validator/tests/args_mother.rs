@@ -7,6 +7,8 @@ pub struct ArgsMotherObject {
     service: StreamingService,
     page_depth: u16,
     setlist_api_key: Option<String>,
+    youtube_client_id: Option<String>,
+    youtube_client_secret: Option<String>,
 }
 
 impl ArgsMotherObject {
@@ -17,6 +19,8 @@ impl ArgsMotherObject {
             service: StreamingService::Spotify,
             page_depth: 1,
             setlist_api_key: None,
+            youtube_client_id: None,
+            youtube_client_secret: None,
         }
     }
 
@@ -45,6 +49,16 @@ impl ArgsMotherObject {
         self
     }
 
+    pub fn with_youtube_client_id(mut self, youtube_client_id: &str) -> Self {
+        self.youtube_client_id = Some(youtube_client_id.to_string());
+        self
+    }
+
+    pub fn with_youtube_client_secret(mut self, youtube_client_secret: &str) -> Self {
+        self.youtube_client_secret = Some(youtube_client_secret.to_string());
+        self
+    }
+
     pub fn build(self) -> Args {
         Args {
             artists: self.artists,
@@ -52,6 +66,8 @@ impl ArgsMotherObject {
             service: self.service,
             page_depth: self.page_depth,
             setlist_api_key: self.setlist_api_key,
+            youtube_client_id: self.youtube_client_id,
+            youtube_client_secret: self.youtube_client_secret,
         }
     }
 }

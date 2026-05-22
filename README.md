@@ -102,8 +102,5 @@ Use a custom playlist name:
 cargo run -- --artists "The National" --service spotify --playlist-name "Late Night Set"
 ```
 
-## Contributing
-Please read the contribution guide: [CONTRIBUTING.md](./CONTRIBUTING.md).
-
 ## License
 This project is licensed under the terms described in the [License](./LICENSE).

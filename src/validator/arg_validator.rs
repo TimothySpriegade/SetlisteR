@@ -38,5 +38,13 @@ fn build_secrets_by_type(args: &Args) -> HashMap<KeyType, String> {
         secrets_by_type.insert(KeyType::SetlistFmApiKey, setlist_api_key.clone());
     }
 
+    if let Some(youtube_client_id) = &args.youtube_client_id {
+        secrets_by_type.insert(KeyType::YouTubeClientId, youtube_client_id.clone());
+    }
+
+    if let Some(youtube_client_secret) = &args.youtube_client_secret {
+        secrets_by_type.insert(KeyType::YouTubeClientSecret, youtube_client_secret.clone());
+    }
+
     secrets_by_type
 }

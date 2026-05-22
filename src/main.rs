@@ -22,7 +22,6 @@ async fn main() {
     let sanitized_args = parse_and_validate_args();
     let api_key = resolve_api_key(&sanitized_args);
     let client = build_setlist_client(api_key);
-
     let artist_setlist_responses =
         fetch_setlists_for_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
     let artist_analysis_collection = analyze_artist_setlists(artist_setlist_responses);
@@ -34,7 +33,7 @@ async fn main() {
     )
     .await;
 
-    print_results(&reduced_playlist_data);
+    let json_output = serde_json::to_string_pretty(&reduced_playlist_data).expect("Failed to serialize playlist data");
 }
 
 async fn reduce_playlist_data(
@@ -132,35 +131,9 @@ fn analyze_artist_setlists(
     ArtistAnalysisCollection { artist_analyses }
 }
 
-fn print_results(playlist_data: &PlaylistData) {
-    println!("Playlist: {}", playlist_data.playlist_name);
-
-    if !playlist_data.platforms.is_empty() {
-        let platforms = playlist_data
-            .platforms
-            .iter()
-            .map(streaming_service_name)
-            .collect::<Vec<&str>>()
-            .join(", ");
-        println!("Platforms: {}", platforms);
-    }
-
-    println!();
-
-    for artist_playlist in &playlist_data.artist_playlists {
-        println!("Artist: {}", artist_playlist.artist);
-
-        for (position, song_name) in &artist_playlist.songs_by_position {
-            println!("{}. {}", position, song_name);
-        }
-
-        println!();
-    }
-}
-
 fn streaming_service_name(service: &StreamingService) -> &'static str {
     match service {
         StreamingService::Spotify => "Spotify",
-        StreamingService::YouTubeMusic => "YouTube Music",
+        StreamingService::YoutubeMusic => "YouTube Music",
     }
 }

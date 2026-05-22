@@ -1,0 +1,13 @@
+[project]
+name = "ytmusic-sidecar"
+version = "0.1.0"
+description = "A sidecar for SetlisteR to interact with YouTube Music API"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "ytmusicapi",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

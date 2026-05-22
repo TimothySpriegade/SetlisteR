@@ -21,10 +21,18 @@ pub struct Args {
     /// Store the setlist.fm API key in the system keyring
     #[arg(long)]
     pub(crate) setlist_api_key: Option<String>,
+
+    /// Store the YouTube API Client ID in the system keyring
+    #[arg(long)]
+    pub(crate) youtube_client_id: Option<String>,
+
+    /// Store the YouTube API Client Secret in the system keyring
+    #[arg(long)]
+    pub(crate) youtube_client_secret: Option<String>,
 }
 
-#[derive(ValueEnum, Clone)]
+#[derive(ValueEnum, Clone, serde::Serialize)]
 pub(crate) enum StreamingService {
     Spotify,
-    YouTubeMusic,
+    YoutubeMusic,
 }

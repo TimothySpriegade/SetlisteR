@@ -9,11 +9,17 @@ pub struct SecretsManager;
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub enum KeyType {
     SetlistFmApiKey,
+    YouTubeClientId,
+    YouTubeClientSecret,
 }
 
 const KEYRING_SERVICE: &str = "SetlisteR";
 const SETLIST_KEYRING_USER: &str = "setlist_fm_api_key";
 const SETLIST_FM_API_KEY_ENV_VAR: &str = "SETLIST_FM_API_KEY";
+const YOUTUBE_CLIENT_ID_KEYRING_USER: &str = "youtube_client_id";
+const YOUTUBE_CLIENT_ID_ENV_VAR: &str = "YOUTUBE_CLIENT_ID";
+const YOUTUBE_CLIENT_SECRET_KEYRING_USER: &str = "youtube_client_secret";
+const YOUTUBE_CLIENT_SECRET_ENV_VAR: &str = "YOUTUBE_CLIENT_SECRET";
 
 impl SecretsManager {
     pub fn new() -> SecretsManager {
@@ -55,6 +61,12 @@ impl SecretsManager {
                 KeyType::SetlistFmApiKey => {
                     Self::set_keyring_secret(KEYRING_SERVICE, SETLIST_KEYRING_USER, key_value);
                 }
+                KeyType::YouTubeClientId => {
+                    Self::set_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_ID_KEYRING_USER, key_value);
+                }
+                KeyType::YouTubeClientSecret => {
+                    Self::set_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_SECRET_KEYRING_USER, key_value);
+                }
             }
         }
         Ok(())
@@ -64,6 +76,20 @@ impl SecretsManager {
         match Self::get_keyring_secret(KEYRING_SERVICE, SETLIST_KEYRING_USER) {
             Some(secret) => Some(secret),
             None => Self::get_env_secret(SETLIST_FM_API_KEY_ENV_VAR.to_string()),
+        }
+    }
+
+    pub fn get_youtube_client_id(&self) -> Option<String> {
+        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_ID_KEYRING_USER) {
+            Some(secret) => Some(secret),
+            None => Self::get_env_secret(YOUTUBE_CLIENT_ID_ENV_VAR.to_string()),
+        }
+    }
+
+    pub fn get_youtube_client_secret(&self) -> Option<String> {
+        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_SECRET_KEYRING_USER) {
+            Some(secret) => Some(secret),
+            None => Self::get_env_secret(YOUTUBE_CLIENT_SECRET_ENV_VAR.to_string()),
         }
     }
 
