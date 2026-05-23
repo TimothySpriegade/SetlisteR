@@ -14,7 +14,7 @@
 ## Prerequisites
 - Rust toolchain that supports edition `2024`.
 - Cargo.
-- Python 3.9+ with `uv` or `pip` installed.
+- Python 3.9+ and [`uv`](https://docs.astral.sh/uv/) (used to build the YouTube Music sidecar during `cargo build`).
 - A valid setlist.fm API key.
 - Optional but recommended: a working OS keyring backend (macOS Keychain, Windows Credential Manager, or Linux Secret Service-compatible backend).
 
@@ -103,6 +103,9 @@ Generate a YouTube Music playlist using page depth 3 and a custom name:
 ```bash
 cargo run -- --artists "Radiohead, Muse" --service youtube-music --page-depth 3 --playlist-name "Alternative Rock Mix"
 ```
+
+## Contributing
+Contributions are welcome! Please read the [Contributing Guide](./CONTRIBUTING.md) for details on the development setup, project structure, coding conventions, and the pull request process.
 
 ## License
 This project is licensed under the terms described in the [License](./LICENSE).

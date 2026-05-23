@@ -33,7 +33,7 @@ impl SecretsManager {
             {
                 #[cfg(target_os = "macos")]
                 {
-                    if let Ok(store) = apple_native_keyring_store::Store::new() {
+                    if let Ok(store) = apple_native_keyring_store::keychain::Store::new() {
                         keyring_core::set_default_store(store);
                     }
                 }

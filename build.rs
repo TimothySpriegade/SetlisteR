@@ -2,10 +2,10 @@ use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn hash_python_sources(src_dir: &PathBuf) -> u64 {
+fn hash_python_sources(src_dir: &Path) -> u64 {
     let mut hasher = DefaultHasher::new();
     for filename in ["main.py", "auth.py", "playlist.py", "pyproject.toml"] {
         let path = src_dir.join(filename);
@@ -37,7 +37,7 @@ fn main() {
         .ok()
         .and_then(|s| s.trim().parse().ok());
 
-    let needs_rebuild = !sidecar_bin.exists() || cached_hash.map_or(true, |h| h != current_hash);
+    let needs_rebuild = !sidecar_bin.exists() || (cached_hash != Some(current_hash));
 
     if needs_rebuild {
         let status = Command::new("uv")
