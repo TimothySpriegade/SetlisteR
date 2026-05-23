@@ -95,18 +95,23 @@ Documentation improvements are always welcome! This includes updating the `READM
 ```
 SetlisteR/
 ├── src/
-│   ├── main.rs              # Entry point — argument parsing and top-level dispatch
-│   ├── api/                 # setlist.fm API client (HTTP, pagination, rate-limiting)
-│   ├── data/                # Data models and serde serialization/deserialization
-│   ├── playlist_creator/    # Ranking logic and playlist assembly
-│   ├── secrets_manager/     # Keyring-backed credential storage and retrieval
-│   └── validator/           # Input validation for artists, playlist names, and args
-├── ytmusic_sidecar/         # Python sidecar compiled into a self-contained binary by build.rs
-│   ├── main.py              # CLI entry point (subcommands: login, create-playlist)
-│   ├── auth.py              # Browser header sanitisation and ytmusicapi setup
-│   ├── playlist.py          # Song search and playlist creation via ytmusicapi
-│   └── pyproject.toml       # Python project metadata and dependency declarations
-├── build.rs                 # Cargo build script — invokes PyInstaller to compile the sidecar
+│   ├── main.rs                        # Entry point — argument parsing and top-level dispatch
+│   ├── api/
+│   │   ├── setlist_fm.rs              # setlist.fm HTTP client, pagination, and rate-limiting
+│   │   ├── ytmusic_sidecar.rs         # Spawns the Python sidecar and communicates with it
+│   │   └── playlist_creator.rs        # Ranking logic and playlist assembly
+│   ├── data/
+│   │   ├── models/                    # Serde data models (args, setlist responses, song stats)
+│   │   ├── setlist_data_processor.rs  # Transforms raw API responses into internal models
+│   │   └── setlist_data_reducer.rs    # Reduces processed data into ranked playlist output
+│   ├── secrets_manager/               # Keyring-backed credential storage and retrieval
+│   └── validator/                     # Input validation for artists, playlist names, and args
+├── ytmusic_sidecar/                   # Python sidecar compiled into a self-contained binary by build.rs
+│   ├── main.py                        # CLI entry point (subcommands: login, create-playlist)
+│   ├── auth.py                        # Browser header sanitisation and ytmusicapi setup
+│   ├── playlist.py                    # Song search and playlist creation via ytmusicapi
+│   └── pyproject.toml                 # Python project metadata and dependency declarations
+├── build.rs                           # Cargo build script — invokes PyInstaller to compile the sidecar
 └── Cargo.toml
 ```
 

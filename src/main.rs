@@ -4,7 +4,7 @@ use crate::data::models::playlist_data::PlaylistData;
 use crate::data::models::setlistfm_response::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::data::setlist_data_reducer::SetlistDataReducer;
-use crate::playlist_creator::playlist_creator::PlaylistCreator;
+use api::playlist_creator::PlaylistCreator;
 use crate::secrets_manager::secrets_manager::SecretsManager;
 use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
 use clap::Parser;
@@ -14,7 +14,6 @@ use tokio::task::JoinSet;
 
 mod api;
 mod data;
-mod playlist_creator;
 mod secrets_manager;
 mod validator;
 
