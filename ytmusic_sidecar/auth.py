@@ -1,26 +1,27 @@
-import os
 import sys
-import tempfile
-from ytmusicapi.auth.oauth import setup_oauth
+import json
 
-def login(client_id, client_secret):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        oauth_file = os.path.join(temp_dir, "oauth.json")
-        try:
-            setup_oauth(
-                client_id=client_id,
-                client_secret=client_secret,
-                filepath=oauth_file,
-                open_browser=False
-            )
-            
-            with open(oauth_file, "r") as f:
-                oauth_data = f.read()
-            
-            print("\n---YT_OAUTH_JSON_START---")
-            print(oauth_data)
-            print("---YT_OAUTH_JSON_END---")
-            
-        except Exception as e:
-            print(f"Error during OAuth setup: {e}", file=sys.stderr)
-            sys.exit(1)
+from ytmusicapi import setup
+
+
+_INVALID_KEY_CHARS = frozenset("/? ")
+
+
+def _is_valid_header_key(key: str) -> bool:
+    return bool(key.strip()) and not any(c in key for c in _INVALID_KEY_CHARS)
+
+
+def login(headers_raw: str, output_file: str) -> None:
+    try:
+        setup(filepath=output_file, headers_raw=headers_raw)
+
+        with open(output_file) as f:
+            headers: dict = json.load(f)
+
+        cleaned = {k: v for k, v in headers.items() if _is_valid_header_key(k)}
+
+        with open(output_file, "w") as f:
+            json.dump(cleaned, f, indent=4)
+    except Exception as e:
+        print(f"Failed to set up browser authentication: {e}", file=sys.stderr)
+        sys.exit(1)

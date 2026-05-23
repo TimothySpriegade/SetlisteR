@@ -2,70 +2,96 @@ import os
 import sys
 import json
 import tempfile
+import traceback
+
 from ytmusicapi import YTMusic
 
-def create_playlist():
-    input_data = sys.stdin.read()
-    if not input_data:
-        print("No input data provided on stdin", file=sys.stderr)
+
+def _read_stdin_json() -> dict:
+    raw = sys.stdin.read()
+    if not raw:
+        print("No input received on stdin.", file=sys.stderr)
         sys.exit(1)
-        
+
     try:
-        data = json.loads(input_data)
+        return json.loads(raw)
     except json.JSONDecodeError as e:
-        print(f"Invalid JSON provided on stdin: {e}", file=sys.stderr)
+        print(f"Failed to parse stdin as JSON: {e}", file=sys.stderr)
         sys.exit(1)
-        
-    oauth_json_str = os.environ.get("YTMUSIC_OAUTH_JSON")
-    if not oauth_json_str:
-        print("Missing 'YTMUSIC_OAUTH_JSON' environment variable. Cannot authenticate.", file=sys.stderr)
+
+
+def _init_ytmusic() -> YTMusic:
+    browser_json = os.environ.get("YTMUSIC_BROWSER_JSON")
+    if not browser_json:
+        print("YTMUSIC_BROWSER_JSON environment variable is not set.", file=sys.stderr)
         sys.exit(1)
-        
-    playlist_name = data.get("playlist_name", "SetlisteR Playlist")
-    artist_playlists = data.get("artist_playlists", [])
-    
-    with tempfile.TemporaryDirectory() as temp_dir:
-        oauth_file = os.path.join(temp_dir, "oauth.json")
-        with open(oauth_file, "w") as f:
-            f.write(oauth_json_str)
-            
-        try:
-            yt = YTMusic(oauth_file)
-        except Exception as e:
-            print(f"Failed to initialize YTMusic: {e}", file=sys.stderr)
-            sys.exit(1)
-            
+
+    # Write the auth JSON to a temp file; keep the directory alive for the
+    # entire duration of the sidecar, not just during initialisation.
+    temp_dir = tempfile.mkdtemp()
+    auth_file = os.path.join(temp_dir, "browser.json")
+    with open(auth_file, "w") as f:
+        f.write(browser_json)
+
+    try:
+        return YTMusic(auth_file)
+    except Exception as e:
+        print(f"Failed to initialize YTMusic: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _search_song(yt: YTMusic, artist: str, title: str) -> str | None:
+    query = f"{artist} {title}"
+    print(f"Searching: {query}", file=sys.stderr)
+    try:
+        results = yt.search(query, filter="songs", limit=1)
+        if results:
+            track = results[0]
+            print(f"  Found: {track['title']} ({track['videoId']})", file=sys.stderr)
+            return track["videoId"]
+        print("  No results found.", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"  Search error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return None
+
+
+def _collect_video_ids(yt: YTMusic, artist_playlists: list) -> list[str]:
     video_ids = []
     for artist_group in artist_playlists:
-        artist_name = artist_group.get("artist", "")
-        songs_by_pos = artist_group.get("songs_by_position", {})
-        
-        sorted_positions = sorted(songs_by_pos.keys(), key=lambda x: int(x))
-        
-        for pos in sorted_positions:
-            song_title = songs_by_pos[pos]
-            query = f"{artist_name} {song_title}"
-            
-            print(f"Searching for: {query}...", file=sys.stderr)
-            try:
-                results = yt.search(query, filter="songs", limit=1)
-                if results and len(results) > 0:
-                    video_ids.append(results[0]["videoId"])
-                    print(f"  Found: {results[0]['title']} ({results[0]['videoId']})", file=sys.stderr)
-                else:
-                    print(f"  No results found.", file=sys.stderr)
-            except Exception as e:
-                print(f"  Search error: {e}", file=sys.stderr)
-                
+        artist = artist_group.get("artist", "")
+        songs_by_pos: dict = artist_group.get("songs_by_position", {})
+        for pos in sorted(songs_by_pos, key=int):
+            video_id = _search_song(yt, artist, songs_by_pos[pos])
+            if video_id:
+                video_ids.append(video_id)
+    return video_ids
+
+
+def create_playlist() -> None:
+    data = _read_stdin_json()
+    yt = _init_ytmusic()
+
+    playlist_name: str = data.get("playlist_name", "SetlisteR Playlist")
+    artist_playlists: list = data.get("artist_playlists", [])
+
+    video_ids = _collect_video_ids(yt, artist_playlists)
     if not video_ids:
-        print("No videos found to add to the playlist. Aborting.", file=sys.stderr)
+        print("No videos found — aborting playlist creation.", file=sys.stderr)
         sys.exit(1)
-        
-    print(f"Creating playlist '{playlist_name}' with {len(video_ids)} tracks...", file=sys.stderr)
+
+    print(
+        f"Creating playlist '{playlist_name}' with {len(video_ids)} tracks…",
+        file=sys.stderr,
+    )
     try:
-        playlist_id = yt.create_playlist(title=playlist_name, description="Generated by SetlisteR")
+        playlist_id = yt.create_playlist(
+            title=playlist_name,
+            description="Generated by SetlisteR",
+        )
         yt.add_playlist_items(playlist_id, video_ids)
-        print(f"Playlist created successfully! ID: {playlist_id}", file=sys.stderr)
+        print(f"Done! Playlist ID: {playlist_id}", file=sys.stderr)
     except Exception as e:
-        print(f"Failed to create playlist or add items: {e}", file=sys.stderr)
+        print(f"Playlist creation failed: {e}", file=sys.stderr)
         sys.exit(1)

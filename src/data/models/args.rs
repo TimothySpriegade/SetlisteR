@@ -22,13 +22,9 @@ pub struct Args {
     #[arg(long)]
     pub(crate) setlist_api_key: Option<String>,
 
-    /// Store the YouTube API Client ID in the system keyring
+    /// Store the YouTube browser authentication headers in the system keyring
     #[arg(long)]
-    pub(crate) youtube_client_id: Option<String>,
-
-    /// Store the YouTube API Client Secret in the system keyring
-    #[arg(long)]
-    pub(crate) youtube_client_secret: Option<String>,
+    pub(crate) youtube_headers: Option<String>,
 }
 
 #[derive(ValueEnum, Clone, serde::Serialize)]

@@ -2,6 +2,7 @@ use crate::Args;
 use crate::data::models::args::StreamingService;
 use crate::secrets_manager::secrets_manager::KeyType;
 use crate::validator::artist_validator::ArtistValidator;
+use crate::validator::header_validator::HeaderValidator;
 use crate::validator::playlist_name_validator::PlaylistNameValidator;
 use std::collections::HashMap;
 
@@ -15,11 +16,14 @@ pub struct SanitizedArgs {
     pub secrets_by_type: HashMap<KeyType, String>,
 }
 impl ArgValidator {
-    pub fn validate(args: &Args) -> Result<SanitizedArgs, String> {
-        let artists = ArtistValidator::validate(args)?;
-        let playlist_name = PlaylistNameValidator::validate(args, &artists)?;
+    pub fn validate(mut args: Args) -> Result<SanitizedArgs, String> {
+        let youtube_headers = HeaderValidator::validate(&args)?;
+        args.youtube_headers = youtube_headers;
 
-        let secrets_by_type = build_secrets_by_type(args);
+        let artists = ArtistValidator::validate(&args)?;
+        let playlist_name = PlaylistNameValidator::validate(&args, &artists)?;
+
+        let secrets_by_type = build_secrets_by_type(&args);
 
         Ok(SanitizedArgs {
             artists,
@@ -38,12 +42,8 @@ fn build_secrets_by_type(args: &Args) -> HashMap<KeyType, String> {
         secrets_by_type.insert(KeyType::SetlistFmApiKey, setlist_api_key.clone());
     }
 
-    if let Some(youtube_client_id) = &args.youtube_client_id {
-        secrets_by_type.insert(KeyType::YouTubeClientId, youtube_client_id.clone());
-    }
-
-    if let Some(youtube_client_secret) = &args.youtube_client_secret {
-        secrets_by_type.insert(KeyType::YouTubeClientSecret, youtube_client_secret.clone());
+    if let Some(youtube_headers) = &args.youtube_headers {
+        secrets_by_type.insert(KeyType::YouTubeHeaders, youtube_headers.clone());
     }
 
     secrets_by_type

@@ -2,3 +2,11 @@
 /target
 .env
 .opencode
+
+# Python sidecar build artifacts
+ytmusic_sidecar/.venv/
+ytmusic_sidecar/build/
+ytmusic_sidecar/*.egg-info/
+ytmusic_sidecar/*.spec
+**/__pycache__/
+*.pyc

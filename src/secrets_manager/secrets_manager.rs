@@ -9,17 +9,16 @@ pub struct SecretsManager;
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub enum KeyType {
     SetlistFmApiKey,
-    YouTubeClientId,
-    YouTubeClientSecret,
+    YouTubeHeaders,
 }
 
 const KEYRING_SERVICE: &str = "SetlisteR";
 const SETLIST_KEYRING_USER: &str = "setlist_fm_api_key";
 const SETLIST_FM_API_KEY_ENV_VAR: &str = "SETLIST_FM_API_KEY";
-const YOUTUBE_CLIENT_ID_KEYRING_USER: &str = "youtube_client_id";
-const YOUTUBE_CLIENT_ID_ENV_VAR: &str = "YOUTUBE_CLIENT_ID";
-const YOUTUBE_CLIENT_SECRET_KEYRING_USER: &str = "youtube_client_secret";
-const YOUTUBE_CLIENT_SECRET_ENV_VAR: &str = "YOUTUBE_CLIENT_SECRET";
+const YOUTUBE_HEADERS_KEYRING_USER: &str = "youtube_headers";
+const YOUTUBE_HEADERS_ENV_VAR: &str = "YOUTUBE_HEADERS";
+const YOUTUBE_OAUTH_JSON_KEYRING_USER: &str = "youtube_oauth_json";
+const YOUTUBE_OAUTH_JSON_ENV_VAR: &str = "YOUTUBE_OAUTH_JSON";
 
 impl SecretsManager {
     pub fn new() -> SecretsManager {
@@ -61,11 +60,19 @@ impl SecretsManager {
                 KeyType::SetlistFmApiKey => {
                     Self::set_keyring_secret(KEYRING_SERVICE, SETLIST_KEYRING_USER, key_value);
                 }
-                KeyType::YouTubeClientId => {
-                    Self::set_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_ID_KEYRING_USER, key_value);
-                }
-                KeyType::YouTubeClientSecret => {
-                    Self::set_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_SECRET_KEYRING_USER, key_value);
+                KeyType::YouTubeHeaders => {
+                    Self::set_keyring_secret(
+                        KEYRING_SERVICE,
+                        YOUTUBE_HEADERS_KEYRING_USER,
+                        key_value,
+                    );
+                    let _ =
+                        keyring_core::Entry::new(KEYRING_SERVICE, YOUTUBE_OAUTH_JSON_KEYRING_USER)
+                            .and_then(|entry| entry.delete_credential());
+                    let _ = keyring_core::Entry::new(KEYRING_SERVICE, "youtube_client_id")
+                        .and_then(|entry| entry.delete_credential());
+                    let _ = keyring_core::Entry::new(KEYRING_SERVICE, "youtube_client_secret")
+                        .and_then(|entry| entry.delete_credential());
                 }
             }
         }
@@ -79,18 +86,22 @@ impl SecretsManager {
         }
     }
 
-    pub fn get_youtube_client_id(&self) -> Option<String> {
-        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_ID_KEYRING_USER) {
+    pub fn get_youtube_headers(&self) -> Option<String> {
+        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_HEADERS_KEYRING_USER) {
             Some(secret) => Some(secret),
-            None => Self::get_env_secret(YOUTUBE_CLIENT_ID_ENV_VAR.to_string()),
+            None => Self::get_env_secret(YOUTUBE_HEADERS_ENV_VAR.to_string()),
         }
     }
 
-    pub fn get_youtube_client_secret(&self) -> Option<String> {
-        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_CLIENT_SECRET_KEYRING_USER) {
+    pub fn get_youtube_oauth_json(&self) -> Option<String> {
+        match Self::get_keyring_secret(KEYRING_SERVICE, YOUTUBE_OAUTH_JSON_KEYRING_USER) {
             Some(secret) => Some(secret),
-            None => Self::get_env_secret(YOUTUBE_CLIENT_SECRET_ENV_VAR.to_string()),
+            None => Self::get_env_secret(YOUTUBE_OAUTH_JSON_ENV_VAR.to_string()),
         }
+    }
+
+    pub fn set_youtube_oauth_json(&self, oauth_json: String) {
+        Self::set_keyring_secret(KEYRING_SERVICE, YOUTUBE_OAUTH_JSON_KEYRING_USER, oauth_json);
     }
 
     fn set_keyring_secret(keyring_service: &str, keyring_user: &str, key: String) {

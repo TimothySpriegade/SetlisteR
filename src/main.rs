@@ -1,10 +1,10 @@
-use crate::data::models::args::Args;
-use crate::data::models::args::StreamingService;
+use crate::data::models::args::{Args, StreamingService};
 use crate::data::models::meta_data::{ArtistAnalysis, ArtistAnalysisCollection};
 use crate::data::models::playlist_data::PlaylistData;
 use crate::data::models::setlistfm_response::{Setlist, SetlistResponse};
 use crate::data::setlist_data_processor::SetlistDataProcessor;
 use crate::data::setlist_data_reducer::SetlistDataReducer;
+use crate::playlist_creator::playlist_creator::PlaylistCreator;
 use crate::secrets_manager::secrets_manager::SecretsManager;
 use crate::validator::arg_validator::{ArgValidator, SanitizedArgs};
 use clap::Parser;
@@ -14,13 +14,23 @@ use tokio::task::JoinSet;
 
 mod api;
 mod data;
+mod playlist_creator;
 mod secrets_manager;
 mod validator;
 
 #[tokio::main]
 async fn main() {
     let sanitized_args = parse_and_validate_args();
-    let api_key = resolve_api_key(&sanitized_args);
+    let secret_manager = SecretsManager::new();
+    secret_manager
+        .set_keys_from_args(sanitized_args.secrets_by_type.clone())
+        .expect("Secret configuration failed");
+
+    let playlist_creator = PlaylistCreator::new(&secret_manager);
+
+    let api_key = secret_manager
+        .get_setlist_fm_api_key()
+        .expect("Setlist.fm API key not found in secrets manager");
     let client = build_setlist_client(api_key);
     let artist_setlist_responses =
         fetch_setlists_for_artists(client, sanitized_args.artists, sanitized_args.page_depth).await;
@@ -28,12 +38,16 @@ async fn main() {
 
     let reduced_playlist_data = reduce_playlist_data(
         sanitized_args.playlist_name,
-        sanitized_args.service,
+        sanitized_args.service.clone(),
         artist_analysis_collection,
     )
     .await;
 
-    let json_output = serde_json::to_string_pretty(&reduced_playlist_data).expect("Failed to serialize playlist data");
+    let json_output = serde_json::to_string_pretty(&reduced_playlist_data)
+        .expect("Failed to serialize playlist data");
+    println!("{}", json_output);
+
+    playlist_creator.create(&reduced_playlist_data, &sanitized_args.service);
 }
 
 async fn reduce_playlist_data(
@@ -50,23 +64,13 @@ async fn reduce_playlist_data(
 
 fn parse_and_validate_args() -> SanitizedArgs {
     let args = Args::parse();
-    match ArgValidator::validate(&args) {
+    match ArgValidator::validate(args) {
         Ok(validated_args) => validated_args,
         Err(err) => {
             eprintln!("Error validating arguments: {}", err);
             std::process::exit(1);
         }
     }
-}
-
-fn resolve_api_key(sanitized_args: &SanitizedArgs) -> String {
-    let secret_manager = SecretsManager::new();
-    secret_manager
-        .set_keys_from_args(sanitized_args.secrets_by_type.clone())
-        .expect("Secret configuration failed");
-    secret_manager
-        .get_setlist_fm_api_key()
-        .expect("Setlist.fm API key not found in secrets manager")
 }
 
 fn build_setlist_client(api_key: String) -> Arc<api::setlist_fm::SetlistFmClient> {
@@ -129,11 +133,4 @@ fn analyze_artist_setlists(
         .collect();
 
     ArtistAnalysisCollection { artist_analyses }
-}
-
-fn streaming_service_name(service: &StreamingService) -> &'static str {
-    match service {
-        StreamingService::Spotify => "Spotify",
-        StreamingService::YoutubeMusic => "YouTube Music",
-    }
 }
