@@ -30,7 +30,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo registry & build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -41,7 +41,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Cache uv virtualenv
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ytmusic_sidecar/.venv
           key: ${{ runner.os }}-uv-${{ hashFiles('ytmusic_sidecar/uv.lock') }}
