@@ -23,5 +23,5 @@ windows-native-keyring-store = "1.0.0"
 dbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rust"] }
 
 [dev-dependencies]
-serial_test = "3"
+serial_test = "4"
 
